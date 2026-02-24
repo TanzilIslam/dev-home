@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { signupSchema } from "@/lib/auth/validation";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -50,7 +51,17 @@ export async function POST(request: Request) {
       { message: "Account created successfully. Please log in." },
       { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { message: "Email is already in use." },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { message: "Unable to create your account right now." },
       { status: 500 },
