@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center px-6 py-16">
@@ -6,6 +7,7 @@ export default function Home() {
         Boilerplate has been removed. This app is ready for your real homepage
         content.
       </p>
+      <Button>Click me</Button>
     </main>
   );
 }
