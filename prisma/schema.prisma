@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EngagementType {
+  TIME_BASED
+  PROJECT_BASED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum CodebaseType {
+  WEB
+  API
+  MOBILE_ANDROID
+  MOBILE_IOS
+  DESKTOP
+  INFRA
+  OTHER
+}
+
+enum LinkCategory {
+  REPOSITORY
+  SERVER
+  COMMUNICATION
+  DOCUMENTATION
+  DESIGN
+  TRACKING
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  clients      Client[]
+  links        Link[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Client {
+  id                 String         @id @default(cuid())
+  userId             String
+  name               String
+  engagementType     EngagementType @default(TIME_BASED)
+  workingDaysPerWeek Int?
+  workingHoursPerDay Int?
+  notes              String?
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects           Project[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([userId])
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  clientId    String
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  codebases   Codebase[]
+  links       Link[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([clientId])
+}
+
+model Codebase {
+  id          String       @id @default(cuid())
+  projectId   String
+  name        String
+  type        CodebaseType @default(OTHER)
+  description String?
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  links       Link[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([projectId])
+}
+
+model Link {
+  id         String       @id @default(cuid())
+  userId     String
+  projectId  String
+  codebaseId String?
+  title      String
+  url        String
+  category   LinkCategory @default(OTHER)
+  notes      String?
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  codebase   Codebase?    @relation(fields: [codebaseId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([codebaseId])
+}

@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dev-home-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devhome}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devhome}
+      POSTGRES_DB: ${POSTGRES_DB:-dev_home}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devhome} -d ${POSTGRES_DB:-dev_home}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dev-home-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-devhome}:${POSTGRES_PASSWORD:-devhome}@postgres:5432/${POSTGRES_DB:-dev_home}?schema=public
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3000/api}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - app_node_modules:/app/node_modules
+      - app_next:/app/.next
+    command: sh -c "pnpm install --frozen-lockfile && pnpm db:generate && pnpm dev"
+
+volumes:
+  postgres_data:
+  app_node_modules:
+  app_next:

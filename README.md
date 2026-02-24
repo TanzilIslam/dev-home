@@ -7,9 +7,22 @@
 
 Install, dev, build, and start commands are blocked unless both versions match exactly.
 
-## Getting Started
+## Phase 1 Stack
+
+- Next.js (App Router)
+- Prisma ORM
+- PostgreSQL
+- Docker / Docker Compose
 
 ## Setup
+
+Create your env file:
+
+```bash
+cp .env.example .env
+# PowerShell:
+# Copy-Item .env.example .env
+```
 
 Install dependencies:
 
@@ -17,12 +30,36 @@ Install dependencies:
 pnpm install
 ```
 
-## Run
+Start PostgreSQL in Docker:
 
-Run the development server:
+```bash
+pnpm docker:up
+```
+
+Create and apply the first Prisma migration:
+
+```bash
+pnpm db:migrate
+```
+
+Generate Prisma client:
+
+```bash
+pnpm db:generate
+```
+
+Run the app locally:
 
 ```bash
 pnpm dev
+```
+
+## Full Docker Dev
+
+Run app + database in Docker:
+
+```bash
+pnpm docker:dev
 ```
 
 ## Other commands
@@ -31,6 +68,9 @@ pnpm dev
 pnpm lint
 pnpm build
 pnpm start
+pnpm db:push
+pnpm db:studio
+pnpm docker:down
 ```
 
 ## Notes
@@ -39,7 +79,4 @@ pnpm start
 - `preinstall`, `predev`, `prebuild`, and `prestart` enforce the required versions.
 - The app uses the Next.js App Router (`app/`).
 - API helper lives in `lib/http.ts` and expects `NEXT_PUBLIC_API_BASE_URL` when calling external APIs.
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Prisma schema is at `prisma/schema.prisma`.
