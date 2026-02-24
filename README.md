@@ -14,6 +14,13 @@ Install, dev, build, and start commands are blocked unless both versions match e
 - PostgreSQL
 - Docker / Docker Compose
 
+## Phase 2 Auth
+
+- Email/password signup and login
+- Cookie-based JWT sessions
+- Protected `/dashboard` route
+- Middleware redirects for auth routes
+
 ## Setup
 
 Create your env file:
@@ -23,6 +30,8 @@ cp .env.example .env
 # PowerShell:
 # Copy-Item .env.example .env
 ```
+
+Set `AUTH_SECRET` in `.env` to a long random value.
 
 Install dependencies:
 
@@ -80,3 +89,4 @@ pnpm docker:down
 - The app uses the Next.js App Router (`app/`).
 - API helper lives in `lib/http.ts` and expects `NEXT_PUBLIC_API_BASE_URL` when calling external APIs.
 - Prisma schema is at `prisma/schema.prisma`.
+- Auth routes are under `app/api/auth/*`.

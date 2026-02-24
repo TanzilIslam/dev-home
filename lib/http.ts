@@ -6,6 +6,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export const http = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   timeout: DEFAULT_TIMEOUT_MS,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
