@@ -23,6 +23,22 @@ type UsePaginatedListOptions<TItem, TFilters extends object> = {
   onError?: (error: unknown) => void;
 };
 
+export type UsePaginatedListReturn<TItem, TFilters extends object> = {
+  items: TItem[];
+  meta: PaginationMeta;
+  page: number;
+  pageSize: number;
+  query: string;
+  filters: TFilters;
+  isLoading: boolean;
+  error: unknown;
+  setPage: (page: number) => void;
+  setQuery: (query: string) => void;
+  setPageSize: (pageSize: number) => void;
+  setFilters: (filters: TFilters) => void;
+  reload: () => void;
+};
+
 export function usePaginatedList<TItem, TFilters extends object>(
   options: UsePaginatedListOptions<TItem, TFilters>,
 ) {

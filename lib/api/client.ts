@@ -221,3 +221,19 @@ export function updateLink(id: string, payload: LinkPayload) {
 export function deleteLink(id: string) {
   return deleteResource("links", id);
 }
+
+export function updateProfile(payload: { name: string }) {
+  return requestApi<{ id: string; email: string; name: string }>({
+    url: "/api/auth/profile",
+    method: "put",
+    data: payload,
+  });
+}
+
+export function changePassword(payload: { currentPassword: string; newPassword: string; confirmPassword: string }) {
+  return requestApi<null>({
+    url: "/api/auth/password",
+    method: "put",
+    data: payload,
+  });
+}
