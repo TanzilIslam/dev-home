@@ -1,229 +1,111 @@
 import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { withAuth, parseBody, parseRouteId } from "@/lib/api/route-helpers";
+import { LINK_SELECT } from "@/lib/api/prisma-selects";
+import { LINK_MSG } from "@/lib/api/messages";
 import {
-  formatZodErrors,
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-} from "@/lib/api/response";
+  requireProject,
+  requireCodebaseForProject,
+} from "@/lib/api/ownership";
 import { mapLinkItem } from "@/lib/domain/mappers";
-import {
-  linkPayloadSchema,
-  resourceIdParamsSchema,
-} from "@/lib/validation/dashboard";
+import { linkPayloadSchema } from "@/lib/validation/dashboard";
 
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
-
-async function parseRouteId(context: RouteContext) {
-  const parsed = resourceIdParamsSchema.safeParse(await context.params);
-  if (!parsed.success) {
-    return null;
-  }
-
-  return parsed.data.id;
-}
-
-export async function GET(_: Request, context: RouteContext) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const id = await parseRouteId(context);
+export const GET = withAuth(async (userId, _, context) => {
+  const id = await parseRouteId(context!);
   if (!id) {
-    return jsonError("Invalid link id.", 400);
+    return jsonError(LINK_MSG.invalidId, 400);
   }
 
   try {
     const link = await prisma.link.findFirst({
-      where: {
-        id,
-        userId,
-      },
-      select: {
-        id: true,
-        projectId: true,
-        codebaseId: true,
-        title: true,
-        url: true,
-        category: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-        codebase: {
-          select: {
-            name: true,
-          },
-        },
-      },
+      where: { id, userId },
+      select: LINK_SELECT,
     });
 
     if (!link) {
-      return jsonError("Link not found.", 404);
+      return jsonError(LINK_MSG.notFound, 404);
     }
 
     return jsonSuccess(mapLinkItem(link));
   } catch {
-    return jsonError("Unable to fetch link right now.", 500);
+    return jsonError(LINK_MSG.fetchError, 500);
   }
-}
+});
 
-export async function PUT(request: Request, context: RouteContext) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const id = await parseRouteId(context);
+export const PUT = withAuth(async (userId, request, context) => {
+  const id = await parseRouteId(context!);
   if (!id) {
-    return jsonError("Invalid link id.", 400);
+    return jsonError(LINK_MSG.invalidId, 400);
   }
 
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return jsonError("Invalid request payload.", 400);
-  }
-
-  const parsed = linkPayloadSchema.safeParse(bodyResult.data);
-  if (!parsed.success) {
-    return jsonError(
-      parsed.error.issues[0]?.message ?? "Invalid link payload.",
-      400,
-      formatZodErrors(parsed.error),
-    );
-  }
+  const result = await parseBody(request, linkPayloadSchema);
+  if (!result.success) return result.response;
 
   try {
-    const project = await prisma.project.findFirst({
-      where: {
-        id: parsed.data.projectId,
-        client: {
-          userId,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
+    const projectError = await requireProject(userId, result.data.projectId);
+    if (projectError) return projectError;
 
-    if (!project) {
-      return jsonError("Project not found.", 404);
-    }
-
-    if (parsed.data.codebaseId) {
-      const codebase = await prisma.codebase.findFirst({
-        where: {
-          id: parsed.data.codebaseId,
-          projectId: parsed.data.projectId,
-          project: {
-            client: {
-              userId,
-            },
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!codebase) {
-        return jsonError("Codebase not found for the selected project.", 404);
-      }
+    if (result.data.codebaseId) {
+      const codebaseError = await requireCodebaseForProject(
+        userId,
+        result.data.codebaseId,
+        result.data.projectId,
+      );
+      if (codebaseError) return codebaseError;
     }
 
     const updateResult = await prisma.link.updateMany({
-      where: {
-        id,
-        userId,
-      },
+      where: { id, userId },
       data: {
-        projectId: parsed.data.projectId,
-        codebaseId: parsed.data.codebaseId,
-        title: parsed.data.title,
-        url: parsed.data.url,
-        category: parsed.data.category,
-        notes: parsed.data.notes,
+        projectId: result.data.projectId,
+        codebaseId: result.data.codebaseId,
+        title: result.data.title,
+        url: result.data.url,
+        category: result.data.category,
+        notes: result.data.notes,
       },
     });
 
     if (updateResult.count === 0) {
-      return jsonError("Link not found.", 404);
+      return jsonError(LINK_MSG.notFound, 404);
     }
 
     const link = await prisma.link.findFirst({
-      where: {
-        id,
-        userId,
-      },
-      select: {
-        id: true,
-        projectId: true,
-        codebaseId: true,
-        title: true,
-        url: true,
-        category: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-        codebase: {
-          select: {
-            name: true,
-          },
-        },
-      },
+      where: { id, userId },
+      select: LINK_SELECT,
     });
 
     if (!link) {
-      return jsonError("Link not found.", 404);
+      return jsonError(LINK_MSG.notFound, 404);
     }
 
     return jsonSuccess(mapLinkItem(link), {
-      message: "Link updated successfully.",
+      message: LINK_MSG.updated,
     });
   } catch {
-    return jsonError("Unable to update link right now.", 500);
+    return jsonError(LINK_MSG.updateError, 500);
   }
-}
+});
 
-export async function DELETE(_: Request, context: RouteContext) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const id = await parseRouteId(context);
+export const DELETE = withAuth(async (userId, _, context) => {
+  const id = await parseRouteId(context!);
   if (!id) {
-    return jsonError("Invalid link id.", 400);
+    return jsonError(LINK_MSG.invalidId, 400);
   }
 
   try {
     const result = await prisma.link.deleteMany({
-      where: {
-        id,
-        userId,
-      },
+      where: { id, userId },
     });
 
     if (result.count === 0) {
-      return jsonError("Link not found.", 404);
+      return jsonError(LINK_MSG.notFound, 404);
     }
 
     return jsonSuccess(null, {
-      message: "Link deleted successfully.",
+      message: LINK_MSG.deleted,
     });
   } catch {
-    return jsonError("Unable to delete link right now.", 500);
+    return jsonError(LINK_MSG.deleteError, 500);
   }
-}
+});

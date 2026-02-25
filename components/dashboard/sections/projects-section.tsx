@@ -1,14 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { ResourcePagination } from "@/components/dashboard/resource-pagination";
 import { ResourceToolbar } from "@/components/dashboard/resource-toolbar";
+import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
+import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
 import {
   PROJECT_STATUS_OPTIONS,
@@ -48,30 +42,15 @@ export function ProjectsSection() {
         addLabel="Add Project"
       />
 
-      <div className="rounded-lg border p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select
-            value={projects.filters.clientId ?? "__all"}
-            onValueChange={(value) => {
-              projects.setFilters({
-                clientId: value === "__all" ? undefined : value,
-              });
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[260px]">
-              <SelectValue placeholder="Filter by client" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">All clients</SelectItem>
-              {clientOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <FilterBar>
+        <FilterSelect
+          value={projects.filters.clientId}
+          onValueChange={(clientId) => projects.setFilters({ clientId })}
+          options={clientOptions}
+          placeholder="Filter by client"
+          allLabel="All clients"
+        />
+      </FilterBar>
 
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -113,26 +92,12 @@ export function ProjectsSection() {
                     {project.description ?? "-"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Edit project ${project.name}`}
-                        onClick={() => openUpdateProjectSheet(project)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        aria-label={`Delete project ${project.name}`}
-                        onClick={() =>
-                          openDeleteDialog("project", project.id, project.name)
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    <ResourceActions
+                      editLabel={`Edit project ${project.name}`}
+                      deleteLabel={`Delete project ${project.name}`}
+                      onEdit={() => openUpdateProjectSheet(project)}
+                      onDelete={() => openDeleteDialog("project", project.id, project.name)}
+                    />
                   </TableCell>
                 </TableRow>
               ))

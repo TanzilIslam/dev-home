@@ -5,6 +5,7 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { ResourceActions } from "@/components/dashboard/resource-actions";
 import {
   Table,
   TableBody,
@@ -217,30 +218,12 @@ function ClientRowGroup({
           {client.notes ?? "-"}
         </TableCell>
         <TableCell>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={`Edit client ${client.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              aria-label={`Delete client ${client.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              Delete
-            </Button>
-          </div>
+          <ResourceActions
+            editLabel={`Edit client ${client.name}`}
+            deleteLabel={`Delete client ${client.name}`}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
         </TableCell>
       </TableRow>
 

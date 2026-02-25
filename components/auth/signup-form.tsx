@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { signupSchema } from "@/lib/auth/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Spinner } from "@/components/ui/spinner";
 
 type SignupFormProps = {
@@ -30,7 +30,6 @@ export function SignupForm({ serverError }: SignupFormProps) {
     serverError ? toFieldErrors(serverError) : {},
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   function clearFieldError(field: keyof SignupFieldErrors) {
     setErrors((previous) => {
@@ -165,31 +164,14 @@ export function SignupForm({ serverError }: SignupFormProps) {
         <label htmlFor="password" className="text-sm font-medium">
           Password
         </label>
-        <div className="relative">
-          <Input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            disabled={isSubmitting}
-            aria-invalid={errors.password ? true : undefined}
-            onChange={() => clearFieldError("password")}
-            className="pr-10"
-          />
-          <button
-            type="button"
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            onClick={() => setShowPassword((value) => !value)}
-            disabled={isSubmitting}
-            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {showPassword ? (
-              <EyeOffIcon className="size-4" />
-            ) : (
-              <EyeIcon className="size-4" />
-            )}
-          </button>
-        </div>
+        <PasswordInput
+          id="password"
+          name="password"
+          autoComplete="new-password"
+          disabled={isSubmitting}
+          aria-invalid={errors.password ? true : undefined}
+          onChange={() => clearFieldError("password")}
+        />
         {errors.password ? (
           <p className="text-sm text-destructive">{errors.password}</p>
         ) : null}

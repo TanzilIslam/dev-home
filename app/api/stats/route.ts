@@ -1,13 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
-import { jsonSuccess, jsonError } from "@/lib/api/response";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { withAuth } from "@/lib/api/route-helpers";
 
-export async function GET() {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withAuth(async (userId) => {
   try {
     const [
       totalClients,
@@ -84,4 +79,4 @@ export async function GET() {
   } catch {
     return jsonError("Unable to fetch stats right now.", 500);
   }
-}
+});

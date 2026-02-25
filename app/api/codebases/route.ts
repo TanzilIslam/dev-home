@@ -1,55 +1,34 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
-import {
-  formatZodErrors,
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-} from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import {
   getPaginationMeta,
   parseListQuery,
   resolvePagination,
 } from "@/lib/api/pagination";
+import { withAuth, parseBody, parseFilters } from "@/lib/api/route-helpers";
+import { CODEBASE_SELECT, DROPDOWN_SELECT } from "@/lib/api/prisma-selects";
+import { CODEBASE_MSG } from "@/lib/api/messages";
+import { requireProject } from "@/lib/api/ownership";
 import { mapCodebaseItem, mapDropdownOption } from "@/lib/domain/mappers";
 import {
   codebaseListFiltersSchema,
   codebasePayloadSchema,
 } from "@/lib/validation/dashboard";
 
-export async function GET(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withAuth(async (userId, request) => {
   const { searchParams } = new URL(request.url);
   const query = parseListQuery(searchParams);
-  const parsedFilters = codebaseListFiltersSchema.safeParse({
-    projectId: searchParams.get("projectId"),
-  });
+  const filters = parseFilters(
+    codebaseListFiltersSchema,
+    { projectId: searchParams.get("projectId") },
+    "Invalid codebase filters.",
+  );
 
-  if (!parsedFilters.success) {
-    return jsonError(
-      parsedFilters.error.issues[0]?.message ?? "Invalid codebase filters.",
-      400,
-      formatZodErrors(parsedFilters.error),
-    );
-  }
-
-  const filters = parsedFilters.data;
+  if (!filters.success) return filters.response;
 
   const where = {
-    project: {
-      client: {
-        userId,
-      },
-    },
-    ...(filters.projectId
-      ? {
-          projectId: filters.projectId,
-        }
-      : {}),
+    project: { client: { userId } },
+    ...(filters.data.projectId ? { projectId: filters.data.projectId } : {}),
     ...(query.search
       ? {
           OR: [
@@ -79,13 +58,8 @@ export async function GET(request: Request) {
     if (query.dropdown) {
       const items = await prisma.codebase.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
+        select: DROPDOWN_SELECT,
+        orderBy: { name: "asc" },
         skip: pagination.skip,
         take: pagination.take,
       });
@@ -98,23 +72,8 @@ export async function GET(request: Request) {
 
     const items = await prisma.codebase.findMany({
       where,
-      select: {
-        id: true,
-        projectId: true,
-        name: true,
-        type: true,
-        description: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      select: CODEBASE_SELECT,
+      orderBy: { updatedAt: "desc" },
       skip: pagination.skip,
       take: pagination.take,
     });
@@ -124,75 +83,33 @@ export async function GET(request: Request) {
       meta: getPaginationMeta(total, pagination.page, pagination.pageSize),
     });
   } catch {
-    return jsonError("Unable to fetch codebases right now.", 500);
+    return jsonError(CODEBASE_MSG.listError, 500);
   }
-}
+});
 
-export async function POST(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return jsonError("Invalid request payload.", 400);
-  }
-
-  const parsed = codebasePayloadSchema.safeParse(bodyResult.data);
-  if (!parsed.success) {
-    return jsonError(
-      parsed.error.issues[0]?.message ?? "Invalid codebase payload.",
-      400,
-      formatZodErrors(parsed.error),
-    );
-  }
+export const POST = withAuth(async (userId, request) => {
+  const result = await parseBody(request, codebasePayloadSchema);
+  if (!result.success) return result.response;
 
   try {
-    const project = await prisma.project.findFirst({
-      where: {
-        id: parsed.data.projectId,
-        client: {
-          userId,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!project) {
-      return jsonError("Project not found.", 404);
-    }
+    const error = await requireProject(userId, result.data.projectId);
+    if (error) return error;
 
     const codebase = await prisma.codebase.create({
       data: {
-        projectId: parsed.data.projectId,
-        name: parsed.data.name,
-        type: parsed.data.type,
-        description: parsed.data.description,
+        projectId: result.data.projectId,
+        name: result.data.name,
+        type: result.data.type,
+        description: result.data.description,
       },
-      select: {
-        id: true,
-        projectId: true,
-        name: true,
-        type: true,
-        description: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-      },
+      select: CODEBASE_SELECT,
     });
 
     return jsonSuccess(mapCodebaseItem(codebase), {
       status: 201,
-      message: "Codebase created successfully.",
+      message: CODEBASE_MSG.created,
     });
   } catch {
-    return jsonError("Unable to create codebase right now.", 500);
+    return jsonError(CODEBASE_MSG.createError, 500);
   }
-}
+});

@@ -30,6 +30,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { http } from "@/lib/http";
+import {
+  PROJECT_STATUS_OPTIONS,
+  CODEBASE_TYPE_OPTIONS,
+  LINK_CATEGORY_CHART_LABELS,
+  getLabelByValue,
+} from "@/lib/constants/domain";
 import type { DashboardStats } from "@/types/stats";
 import type { ApiResponse } from "@/types/api";
 
@@ -40,62 +46,6 @@ const CHART_COLORS = [
   "var(--chart-4)",
   "var(--chart-5)",
 ];
-
-// Friendly label mappers
-function friendlyStatus(s: string) {
-  switch (s) {
-    case "ACTIVE":
-      return "Active";
-    case "PAUSED":
-      return "Paused";
-    case "ARCHIVED":
-      return "Archived";
-    default:
-      return s;
-  }
-}
-
-function friendlyType(s: string) {
-  switch (s) {
-    case "WEB":
-      return "Web";
-    case "API":
-      return "API";
-    case "MOBILE_ANDROID":
-      return "Android";
-    case "MOBILE_IOS":
-      return "iOS";
-    case "DESKTOP":
-      return "Desktop";
-    case "INFRA":
-      return "Infra";
-    case "OTHER":
-      return "Other";
-    default:
-      return s;
-  }
-}
-
-function friendlyCategory(s: string) {
-  switch (s) {
-    case "REPOSITORY":
-      return "Repo";
-    case "SERVER":
-      return "Server";
-    case "COMMUNICATION":
-      return "Comms";
-    case "DOCUMENTATION":
-      return "Docs";
-    case "DESIGN":
-      return "Design";
-    case "TRACKING":
-      return "Tracking";
-    case "OTHER":
-      return "Other";
-    default:
-      return s;
-  }
-}
 
 export function OverviewSection() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -135,17 +85,17 @@ export function OverviewSection() {
   }
 
   const statusData = stats.projectsByStatus.map((g) => ({
-    name: friendlyStatus(g.name),
+    name: getLabelByValue(PROJECT_STATUS_OPTIONS, g.name),
     count: g.count,
   }));
 
   const typeData = stats.codebasesByType.map((g) => ({
-    name: friendlyType(g.name),
+    name: getLabelByValue(CODEBASE_TYPE_OPTIONS, g.name),
     count: g.count,
   }));
 
   const categoryData = stats.linksByCategory.map((g) => ({
-    name: friendlyCategory(g.name),
+    name: LINK_CATEGORY_CHART_LABELS[g.name] ?? g.name,
     count: g.count,
   }));
 

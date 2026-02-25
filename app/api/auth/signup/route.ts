@@ -1,28 +1,15 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { parseBody } from "@/lib/api/route-helpers";
 import { hashPassword } from "@/lib/auth/password";
 import { signupSchema } from "@/lib/auth/validation";
 import { Prisma } from "@/generated/prisma/client";
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { message: "Invalid request payload." },
-      { status: 400 },
-    );
-  }
+  const result = await parseBody(request, signupSchema);
+  if (!result.success) return result.response;
 
-  const parsed = signupSchema.safeParse(body);
-
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Invalid signup data.";
-    return NextResponse.json({ message }, { status: 400 });
-  }
-
-  const { name, email, password } = parsed.data;
+  const { name, email, password } = result.data;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -31,10 +18,7 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { message: "Email is already in use." },
-        { status: 409 },
-      );
+      return jsonError("Email is already in use.", 409);
     }
 
     const passwordHash = await hashPassword(password);
@@ -47,24 +31,18 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(
-      { message: "Account created successfully. Please log in." },
-      { status: 201 },
-    );
+    return jsonSuccess(null, {
+      status: 201,
+      message: "Account created successfully. Please log in.",
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return NextResponse.json(
-        { message: "Email is already in use." },
-        { status: 409 },
-      );
+      return jsonError("Email is already in use.", 409);
     }
 
-    return NextResponse.json(
-      { message: "Unable to create your account right now." },
-      { status: 500 },
-    );
+    return jsonError("Unable to create your account right now.", 500);
   }
 }

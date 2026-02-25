@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { parseBody } from "@/lib/api/route-helpers";
 import { verifyPassword } from "@/lib/auth/password";
 import {
   createSessionToken,
@@ -9,24 +10,10 @@ import {
 import { loginSchema } from "@/lib/auth/validation";
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { message: "Invalid request payload." },
-      { status: 400 },
-    );
-  }
+  const result = await parseBody(request, loginSchema);
+  if (!result.success) return result.response;
 
-  const parsed = loginSchema.safeParse(body);
-
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Invalid login data.";
-    return NextResponse.json({ message }, { status: 400 });
-  }
-
-  const { email, password } = parsed.data;
+  const { email, password } = result.data;
 
   try {
     const user = await prisma.user.findUnique({
@@ -40,18 +27,12 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { message: "Invalid email or password." },
-        { status: 401 },
-      );
+      return jsonError("Invalid email or password.", 401);
     }
 
     const passwordMatches = await verifyPassword(password, user.passwordHash);
     if (!passwordMatches) {
-      return NextResponse.json(
-        { message: "Invalid email or password." },
-        { status: 401 },
-      );
+      return jsonError("Invalid email or password.", 401);
     }
 
     const token = await createSessionToken({
@@ -60,10 +41,7 @@ export async function POST(request: Request) {
       name: user.name,
     });
 
-    const response = NextResponse.json(
-      { message: "Logged in successfully." },
-      { status: 200 },
-    );
+    const response = jsonSuccess(null, { message: "Logged in successfully." });
 
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
@@ -73,9 +51,6 @@ export async function POST(request: Request) {
 
     return response;
   } catch {
-    return NextResponse.json(
-      { message: "Unable to log in right now." },
-      { status: 500 },
-    );
+    return jsonError("Unable to log in right now.", 500);
   }
 }

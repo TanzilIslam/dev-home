@@ -8,7 +8,6 @@ import {
   useState,
   type FormEventHandler,
 } from "react";
-import { z } from "zod";
 import { toast } from "sonner";
 import {
   ApiRequestError,
@@ -39,23 +38,24 @@ import {
   PROJECT_STATUS_OPTIONS,
 } from "@/lib/constants/domain";
 import {
-  firstFieldErrors,
   toNullableNumber,
   toNullableText,
+  toValidationErrors,
   type FormErrorMap,
 } from "@/lib/form-utils";
+import { showRequestError } from "@/lib/form-error-handler";
 import {
   clientPayloadSchema,
   codebasePayloadSchema,
   linkPayloadSchema,
   projectPayloadSchema,
 } from "@/lib/validation/dashboard";
+import { useDropdownLoader } from "@/hooks/use-dropdown-loader";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { useAppStore } from "@/store/use-app-store";
 import type {
   ClientItem,
   CodebaseItem,
-  DropdownOption,
   LinkItem,
   ProjectItem,
 } from "@/types/domain";
@@ -65,9 +65,9 @@ import {
   DEFAULT_LINK_FORM_VALUES,
   DEFAULT_PROJECT_FORM_VALUES,
   type DashboardEntity,
-  type SelectOption,
   type SheetMode,
 } from "@/types/dashboard";
+import { FormErrorText } from "@/components/ui/form-error-text";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -138,58 +138,6 @@ const LINK_FIELDS = [
   "notes",
 ] as const;
 
-function toSelectOptions(items: DropdownOption[]): SelectOption[] {
-  return items.map((item) => ({
-    id: item.id,
-    label: item.name,
-  }));
-}
-
-function toValidationErrors<TFields extends string>(
-  fields: readonly TFields[],
-  error: z.ZodError,
-) {
-  const flattened = error.flatten();
-  const mapped = firstFieldErrors(
-    fields,
-    flattened.fieldErrors as Record<string, string[]>,
-  );
-
-  if (flattened.formErrors[0]) {
-    mapped.form = flattened.formErrors[0];
-  }
-
-  return mapped;
-}
-
-function showRequestError<TFields extends string>(
-  error: unknown,
-  fields: readonly TFields[],
-  setErrors: (nextErrors: FormErrorMap<TFields>) => void,
-  fallbackMessage: string,
-) {
-  if (error instanceof ApiRequestError) {
-    const mapped = firstFieldErrors(fields, error.fieldErrors);
-    setErrors({
-      ...mapped,
-      form: error.message,
-    });
-    toast.error(error.message);
-    return;
-  }
-
-  setErrors({ form: fallbackMessage } as FormErrorMap<TFields>);
-  toast.error(fallbackMessage);
-}
-
-function FormErrorText({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-
-  return <p className="text-destructive mt-1 text-xs">{message}</p>;
-}
-
 function getEntityLabel(entity: DashboardEntity) {
   switch (entity) {
     case "client":
@@ -232,18 +180,13 @@ export function DashboardApp({ user }: DashboardAppProps) {
   const [isSheetSubmitting, setIsSheetSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [clientOptions, setClientOptions] = useState<SelectOption[]>([]);
-  const [projectOptions, setProjectOptions] = useState<SelectOption[]>([]);
-  const [codebaseOptions, setCodebaseOptions] = useState<SelectOption[]>([]);
-  const [linkFormCodebaseOptions, setLinkFormCodebaseOptions] = useState<SelectOption[]>([]);
-  const [linkFilterCodebaseOptions, setLinkFilterCodebaseOptions] = useState<SelectOption[]>([]);
+  const { options: clientOptions, load: loadClientOptions } = useDropdownLoader(listClientDropdown);
+  const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(listProjectDropdown);
+  const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(listCodebaseDropdown);
+  const { options: linkFormCodebaseOptions, load: loadLinkFormCb, clear: clearLinkFormCb } = useDropdownLoader(listCodebaseDropdown);
+  const { options: linkFilterCodebaseOptions, load: loadLinkFilterCb, clear: clearLinkFilterCb } = useDropdownLoader(listCodebaseDropdown);
   const lastListErrorRef = useRef("");
   const lastListErrorAtRef = useRef(0);
-  const clientOptionsRequestIdRef = useRef(0);
-  const projectOptionsRequestIdRef = useRef(0);
-  const codebaseOptionsRequestIdRef = useRef(0);
-  const linkFormDropdownRequestIdRef = useRef(0);
-  const linkFilterDropdownRequestIdRef = useRef(0);
 
   const handleListError = useCallback(
     (error: unknown, fallbackMessage: string) => {
@@ -304,76 +247,17 @@ export function DashboardApp({ user }: DashboardAppProps) {
   const [linkFormValues, setLinkFormValues] = useState(DEFAULT_LINK_FORM_VALUES);
   const [linkErrors, setLinkErrors] = useState<FormErrorMap<(typeof LINK_FIELDS)[number]>>({});
 
-  // --- Dropdown loaders (EXACT same as original) ---
-
-  const loadClientOptions = useCallback(async () => {
-    const requestId = clientOptionsRequestIdRef.current + 1;
-    clientOptionsRequestIdRef.current = requestId;
-    try {
-      const response = await listClientDropdown({ all: true });
-      if (requestId !== clientOptionsRequestIdRef.current) return;
-      setClientOptions(toSelectOptions(response.items));
-    } catch {
-      if (requestId !== clientOptionsRequestIdRef.current) return;
-      setClientOptions([]);
-    }
-  }, []);
-
-  const loadProjectOptions = useCallback(async () => {
-    const requestId = projectOptionsRequestIdRef.current + 1;
-    projectOptionsRequestIdRef.current = requestId;
-    try {
-      const response = await listProjectDropdown({ all: true });
-      if (requestId !== projectOptionsRequestIdRef.current) return;
-      setProjectOptions(toSelectOptions(response.items));
-    } catch {
-      if (requestId !== projectOptionsRequestIdRef.current) return;
-      setProjectOptions([]);
-    }
-  }, []);
-
-  const loadCodebaseOptions = useCallback(async () => {
-    const requestId = codebaseOptionsRequestIdRef.current + 1;
-    codebaseOptionsRequestIdRef.current = requestId;
-    try {
-      const response = await listCodebaseDropdown({ all: true });
-      if (requestId !== codebaseOptionsRequestIdRef.current) return;
-      setCodebaseOptions(toSelectOptions(response.items));
-    } catch {
-      if (requestId !== codebaseOptionsRequestIdRef.current) return;
-      setCodebaseOptions([]);
-    }
-  }, []);
-
   const loadLinkFormCodebaseDropdown = useCallback(async (projectId?: string) => {
-    const requestId = linkFormDropdownRequestIdRef.current + 1;
-    linkFormDropdownRequestIdRef.current = requestId;
-    setLinkFormCodebaseOptions([]);
+    clearLinkFormCb();
     if (!projectId) return;
-    try {
-      const response = await listCodebaseDropdown({ all: true, projectId });
-      if (requestId !== linkFormDropdownRequestIdRef.current) return;
-      setLinkFormCodebaseOptions(toSelectOptions(response.items));
-    } catch {
-      if (requestId !== linkFormDropdownRequestIdRef.current) return;
-      setLinkFormCodebaseOptions([]);
-    }
-  }, []);
+    await loadLinkFormCb({ projectId });
+  }, [clearLinkFormCb, loadLinkFormCb]);
 
   const loadLinkFilterCodebaseDropdown = useCallback(async (projectId?: string) => {
-    const requestId = linkFilterDropdownRequestIdRef.current + 1;
-    linkFilterDropdownRequestIdRef.current = requestId;
-    setLinkFilterCodebaseOptions([]);
+    clearLinkFilterCb();
     if (!projectId) return;
-    try {
-      const response = await listCodebaseDropdown({ all: true, projectId });
-      if (requestId !== linkFilterDropdownRequestIdRef.current) return;
-      setLinkFilterCodebaseOptions(toSelectOptions(response.items));
-    } catch {
-      if (requestId !== linkFilterDropdownRequestIdRef.current) return;
-      setLinkFilterCodebaseOptions([]);
-    }
-  }, []);
+    await loadLinkFilterCb({ projectId });
+  }, [clearLinkFilterCb, loadLinkFilterCb]);
 
   const refreshAllReferenceOptions = useCallback(async () => {
     await Promise.all([loadClientOptions(), loadProjectOptions(), loadCodebaseOptions()]);

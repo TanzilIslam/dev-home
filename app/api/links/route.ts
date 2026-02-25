@@ -1,54 +1,38 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
-import {
-  formatZodErrors,
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-} from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import {
   getPaginationMeta,
   parseListQuery,
   resolvePagination,
 } from "@/lib/api/pagination";
+import { withAuth, parseBody, parseFilters } from "@/lib/api/route-helpers";
+import { LINK_SELECT } from "@/lib/api/prisma-selects";
+import { LINK_MSG } from "@/lib/api/messages";
+import {
+  requireProject,
+  requireCodebaseForProject,
+} from "@/lib/api/ownership";
 import { mapLinkItem } from "@/lib/domain/mappers";
 import { linkListFiltersSchema, linkPayloadSchema } from "@/lib/validation/dashboard";
 
-export async function GET(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withAuth(async (userId, request) => {
   const { searchParams } = new URL(request.url);
   const query = parseListQuery(searchParams);
-  const parsedFilters = linkListFiltersSchema.safeParse({
-    projectId: searchParams.get("projectId"),
-    codebaseId: searchParams.get("codebaseId"),
-  });
+  const filters = parseFilters(
+    linkListFiltersSchema,
+    {
+      projectId: searchParams.get("projectId"),
+      codebaseId: searchParams.get("codebaseId"),
+    },
+    "Invalid link filters.",
+  );
 
-  if (!parsedFilters.success) {
-    return jsonError(
-      parsedFilters.error.issues[0]?.message ?? "Invalid link filters.",
-      400,
-      formatZodErrors(parsedFilters.error),
-    );
-  }
-
-  const filters = parsedFilters.data;
+  if (!filters.success) return filters.response;
 
   const where = {
     userId,
-    ...(filters.projectId
-      ? {
-          projectId: filters.projectId,
-        }
-      : {}),
-    ...(filters.codebaseId
-      ? {
-          codebaseId: filters.codebaseId,
-        }
-      : {}),
+    ...(filters.data.projectId ? { projectId: filters.data.projectId } : {}),
+    ...(filters.data.codebaseId ? { codebaseId: filters.data.codebaseId } : {}),
     ...(query.search
       ? {
           OR: [
@@ -92,52 +76,22 @@ export async function GET(request: Request) {
     if (query.dropdown) {
       const items = await prisma.link.findMany({
         where,
-        select: {
-          id: true,
-          title: true,
-        },
-        orderBy: {
-          title: "asc",
-        },
+        select: { id: true, title: true },
+        orderBy: { title: "asc" },
         skip: pagination.skip,
         take: pagination.take,
       });
 
       return jsonSuccess({
-        items: items.map((item) => ({
-          id: item.id,
-          name: item.title,
-        })),
+        items: items.map((item) => ({ id: item.id, name: item.title })),
         meta: getPaginationMeta(total, pagination.page, pagination.pageSize),
       });
     }
 
     const items = await prisma.link.findMany({
       where,
-      select: {
-        id: true,
-        projectId: true,
-        codebaseId: true,
-        title: true,
-        url: true,
-        category: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-        codebase: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      select: LINK_SELECT,
+      orderBy: { updatedAt: "desc" },
       skip: pagination.skip,
       take: pagination.take,
     });
@@ -147,106 +101,45 @@ export async function GET(request: Request) {
       meta: getPaginationMeta(total, pagination.page, pagination.pageSize),
     });
   } catch {
-    return jsonError("Unable to fetch links right now.", 500);
+    return jsonError(LINK_MSG.listError, 500);
   }
-}
+});
 
-export async function POST(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return jsonError("Invalid request payload.", 400);
-  }
-
-  const parsed = linkPayloadSchema.safeParse(bodyResult.data);
-  if (!parsed.success) {
-    return jsonError(
-      parsed.error.issues[0]?.message ?? "Invalid link payload.",
-      400,
-      formatZodErrors(parsed.error),
-    );
-  }
+export const POST = withAuth(async (userId, request) => {
+  const result = await parseBody(request, linkPayloadSchema);
+  if (!result.success) return result.response;
 
   try {
-    const project = await prisma.project.findFirst({
-      where: {
-        id: parsed.data.projectId,
-        client: {
-          userId,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
+    const projectError = await requireProject(userId, result.data.projectId);
+    if (projectError) return projectError;
 
-    if (!project) {
-      return jsonError("Project not found.", 404);
-    }
-
-    if (parsed.data.codebaseId) {
-      const codebase = await prisma.codebase.findFirst({
-        where: {
-          id: parsed.data.codebaseId,
-          projectId: parsed.data.projectId,
-          project: {
-            client: {
-              userId,
-            },
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!codebase) {
-        return jsonError("Codebase not found for the selected project.", 404);
-      }
+    if (result.data.codebaseId) {
+      const codebaseError = await requireCodebaseForProject(
+        userId,
+        result.data.codebaseId,
+        result.data.projectId,
+      );
+      if (codebaseError) return codebaseError;
     }
 
     const link = await prisma.link.create({
       data: {
         userId,
-        projectId: parsed.data.projectId,
-        codebaseId: parsed.data.codebaseId,
-        title: parsed.data.title,
-        url: parsed.data.url,
-        category: parsed.data.category,
-        notes: parsed.data.notes,
+        projectId: result.data.projectId,
+        codebaseId: result.data.codebaseId,
+        title: result.data.title,
+        url: result.data.url,
+        category: result.data.category,
+        notes: result.data.notes,
       },
-      select: {
-        id: true,
-        projectId: true,
-        codebaseId: true,
-        title: true,
-        url: true,
-        category: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            name: true,
-          },
-        },
-        codebase: {
-          select: {
-            name: true,
-          },
-        },
-      },
+      select: LINK_SELECT,
     });
 
     return jsonSuccess(mapLinkItem(link), {
       status: 201,
-      message: "Link created successfully.",
+      message: LINK_MSG.created,
     });
   } catch {
-    return jsonError("Unable to create link right now.", 500);
+    return jsonError(LINK_MSG.createError, 500);
   }
-}
+});

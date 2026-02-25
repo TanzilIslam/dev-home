@@ -2,60 +2,32 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
-import { ApiRequestError, updateProfile, changePassword } from "@/lib/api/client";
+import { updateProfile, changePassword } from "@/lib/api/client";
+import { profileSchema, changePasswordSchema } from "@/lib/auth/validation";
+import { showRequestError } from "@/lib/form-error-handler";
+import { toValidationErrors, type FormErrorMap } from "@/lib/form-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormErrorText } from "@/components/ui/form-error-text";
 import { Spinner } from "@/components/ui/spinner";
 
 type SettingsSectionProps = {
   user: { email: string; name: string | null };
 };
 
-const profileSchema = z.object({
-  name: z.string().trim().min(1, "Name is required.").max(100, "Name must be 100 characters or less."),
-});
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: z.string().min(8, "New password must be at least 8 characters.").max(72, "New password must be 72 characters or less."),
-  confirmPassword: z.string().min(1, "Please confirm your new password."),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match.",
-  path: ["confirmPassword"],
-});
-
-type ProfileErrors = {
-  name?: string;
-  form?: string;
-};
-
-type PasswordErrors = {
-  currentPassword?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-  form?: string;
-};
-
-function FormErrorText({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-  return <p className="text-sm text-destructive">{message}</p>;
-}
+const PROFILE_FIELDS = ["name"] as const;
+const PASSWORD_FIELDS = ["currentPassword", "newPassword", "confirmPassword"] as const;
 
 export function SettingsSection({ user }: SettingsSectionProps) {
-  // Profile form state
   const [name, setName] = useState(user.name ?? "");
-  const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
+  const [profileErrors, setProfileErrors] = useState<FormErrorMap<(typeof PROFILE_FIELDS)[number]>>({});
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
 
-  // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
+  const [passwordErrors, setPasswordErrors] = useState<FormErrorMap<(typeof PASSWORD_FIELDS)[number]>>({});
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
@@ -66,14 +38,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
 
     const parsed = profileSchema.safeParse({ name });
     if (!parsed.success) {
-      const nextErrors: ProfileErrors = {};
-      for (const issue of parsed.error.issues) {
-        const path = issue.path[0];
-        if (path === "name") {
-          nextErrors.name ??= issue.message;
-        }
-      }
-      setProfileErrors(nextErrors);
+      setProfileErrors(toValidationErrors(PROFILE_FIELDS, parsed.error));
       return;
     }
 
@@ -87,22 +52,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       }
       toast.success("Profile updated successfully.");
     } catch (error) {
-      if (error instanceof ApiRequestError) {
-        if (error.fieldErrors) {
-          const nextErrors: ProfileErrors = {};
-          if (error.fieldErrors.name) {
-            nextErrors.name = error.fieldErrors.name[0];
-          }
-          setProfileErrors(nextErrors);
-        } else {
-          setProfileErrors({ form: error.message });
-        }
-        toast.error(error.message);
-      } else {
-        const message = "Unable to update profile right now.";
-        setProfileErrors({ form: message });
-        toast.error(message);
-      }
+      showRequestError(error, PROFILE_FIELDS, setProfileErrors, "Unable to update profile right now.");
     } finally {
       setIsProfileSubmitting(false);
     }
@@ -114,21 +64,14 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       return;
     }
 
-    const parsed = passwordSchema.safeParse({
+    const parsed = changePasswordSchema.safeParse({
       currentPassword,
       newPassword,
       confirmPassword,
     });
 
     if (!parsed.success) {
-      const nextErrors: PasswordErrors = {};
-      for (const issue of parsed.error.issues) {
-        const path = issue.path[0] as keyof PasswordErrors;
-        if (path === "currentPassword" || path === "newPassword" || path === "confirmPassword") {
-          nextErrors[path] ??= issue.message;
-        }
-      }
-      setPasswordErrors(nextErrors);
+      setPasswordErrors(toValidationErrors(PASSWORD_FIELDS, parsed.error));
       return;
     }
 
@@ -146,28 +89,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      if (error instanceof ApiRequestError) {
-        if (error.fieldErrors) {
-          const nextErrors: PasswordErrors = {};
-          if (error.fieldErrors.currentPassword) {
-            nextErrors.currentPassword = error.fieldErrors.currentPassword[0];
-          }
-          if (error.fieldErrors.newPassword) {
-            nextErrors.newPassword = error.fieldErrors.newPassword[0];
-          }
-          if (error.fieldErrors.confirmPassword) {
-            nextErrors.confirmPassword = error.fieldErrors.confirmPassword[0];
-          }
-          setPasswordErrors(nextErrors);
-        } else {
-          setPasswordErrors({ form: error.message });
-        }
-        toast.error(error.message);
-      } else {
-        const message = "Unable to change password right now.";
-        setPasswordErrors({ form: message });
-        toast.error(message);
-      }
+      showRequestError(error, PASSWORD_FIELDS, setPasswordErrors, "Unable to change password right now.");
     } finally {
       setIsPasswordSubmitting(false);
     }

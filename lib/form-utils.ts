@@ -1,4 +1,6 @@
-﻿export type FormErrorMap<TFields extends string> = Partial<Record<TFields, string>> & {
+﻿import type { ZodError } from "zod";
+
+export type FormErrorMap<TFields extends string> = Partial<Record<TFields, string>> & {
   form?: string;
 };
 
@@ -22,6 +24,23 @@ export function firstFieldErrors<TFields extends string>(
   const formError = errors.form?.[0];
   if (formError) {
     mapped.form = formError;
+  }
+
+  return mapped;
+}
+
+export function toValidationErrors<TFields extends string>(
+  fields: readonly TFields[],
+  error: ZodError,
+): FormErrorMap<TFields> {
+  const flattened = error.flatten();
+  const mapped = firstFieldErrors(
+    fields,
+    flattened.fieldErrors as Record<string, string[]>,
+  );
+
+  if (flattened.formErrors[0]) {
+    mapped.form = flattened.formErrors[0];
   }
 
   return mapped;

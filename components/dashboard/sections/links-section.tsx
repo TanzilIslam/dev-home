@@ -1,14 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { ResourceToolbar } from "@/components/dashboard/resource-toolbar";
 import { ResourcePagination } from "@/components/dashboard/resource-pagination";
+import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
+import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
 import { LINK_CATEGORY_OPTIONS, getLabelByValue } from "@/lib/constants/domain";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
@@ -55,55 +49,29 @@ export function LinksSection() {
         addLabel="Add Link"
       />
 
-      <div className="rounded-lg border p-3">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <Select
-            value={links.filters.projectId ?? "__all"}
-            onValueChange={(value) => {
-              const projectId = value === "__all" ? undefined : value;
-              links.setFilters({
-                projectId,
-                codebaseId: undefined,
-              });
-              void loadLinkFilterCodebaseDropdown(projectId);
-            }}
-          >
-            <SelectTrigger className="w-full lg:w-[260px]">
-              <SelectValue placeholder="Filter by project" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">All projects</SelectItem>
-              {projectOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={links.filters.codebaseId ?? "__all"}
-            onValueChange={(value) => {
-              links.setFilters({
-                ...links.filters,
-                codebaseId: value === "__all" ? undefined : value,
-              });
-            }}
-          >
-            <SelectTrigger className="w-full lg:w-[260px]">
-              <SelectValue placeholder="Filter by codebase" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">All codebases</SelectItem>
-              {linkTableCodebaseOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <FilterBar className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <FilterSelect
+          value={links.filters.projectId}
+          onValueChange={(projectId) => {
+            links.setFilters({ projectId, codebaseId: undefined });
+            void loadLinkFilterCodebaseDropdown(projectId);
+          }}
+          options={projectOptions}
+          placeholder="Filter by project"
+          allLabel="All projects"
+          triggerClassName="w-full lg:w-[260px]"
+        />
+        <FilterSelect
+          value={links.filters.codebaseId}
+          onValueChange={(codebaseId) => {
+            links.setFilters({ ...links.filters, codebaseId });
+          }}
+          options={linkTableCodebaseOptions}
+          placeholder="Filter by codebase"
+          allLabel="All codebases"
+          triggerClassName="w-full lg:w-[260px]"
+        />
+      </FilterBar>
 
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -151,28 +119,12 @@ export function LinksSection() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Edit link ${link.title}`}
-                        onClick={() => {
-                          void openUpdateLinkSheet(link);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        aria-label={`Delete link ${link.title}`}
-                        onClick={() =>
-                          openDeleteDialog("link", link.id, link.title)
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    <ResourceActions
+                      editLabel={`Edit link ${link.title}`}
+                      deleteLabel={`Delete link ${link.title}`}
+                      onEdit={() => { void openUpdateLinkSheet(link); }}
+                      onDelete={() => openDeleteDialog("link", link.id, link.title)}
+                    />
                   </TableCell>
                 </TableRow>
               ))

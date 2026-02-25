@@ -41,6 +41,16 @@ export const LINK_CATEGORY_OPTIONS: Option<LinkCategory>[] = [
   { value: "OTHER", label: "Other" },
 ];
 
+export const LINK_CATEGORY_CHART_LABELS: Record<string, string> = {
+  REPOSITORY: "Repo",
+  SERVER: "Server",
+  COMMUNICATION: "Comms",
+  DOCUMENTATION: "Docs",
+  DESIGN: "Design",
+  TRACKING: "Tracking",
+  OTHER: "Other",
+};
+
 export function getLabelByValue(
   options: Option<string>[],
   value: string | null | undefined,

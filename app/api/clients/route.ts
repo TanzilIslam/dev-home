@@ -1,25 +1,17 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
-import {
-  formatZodErrors,
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-} from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import {
   getPaginationMeta,
   parseListQuery,
   resolvePagination,
 } from "@/lib/api/pagination";
+import { withAuth, parseBody } from "@/lib/api/route-helpers";
+import { CLIENT_SELECT, DROPDOWN_SELECT } from "@/lib/api/prisma-selects";
+import { CLIENT_MSG } from "@/lib/api/messages";
 import { mapClientItem, mapDropdownOption } from "@/lib/domain/mappers";
 import { clientPayloadSchema } from "@/lib/validation/dashboard";
 
-export async function GET(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withAuth(async (userId, request) => {
   const { searchParams } = new URL(request.url);
   const query = parseListQuery(searchParams);
 
@@ -42,13 +34,8 @@ export async function GET(request: Request) {
     if (query.dropdown) {
       const items = await prisma.client.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
+        select: DROPDOWN_SELECT,
+        orderBy: { name: "asc" },
         skip: pagination.skip,
         take: pagination.take,
       });
@@ -61,19 +48,8 @@ export async function GET(request: Request) {
 
     const items = await prisma.client.findMany({
       where,
-      select: {
-        id: true,
-        name: true,
-        engagementType: true,
-        workingDaysPerWeek: true,
-        workingHoursPerDay: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      select: CLIENT_SELECT,
+      orderBy: { updatedAt: "desc" },
       skip: pagination.skip,
       take: pagination.take,
     });
@@ -83,57 +59,32 @@ export async function GET(request: Request) {
       meta: getPaginationMeta(total, pagination.page, pagination.pageSize),
     });
   } catch {
-    return jsonError("Unable to fetch clients right now.", 500);
+    return jsonError(CLIENT_MSG.listError, 500);
   }
-}
+});
 
-export async function POST(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return jsonError("Invalid request payload.", 400);
-  }
-
-  const parsed = clientPayloadSchema.safeParse(bodyResult.data);
-  if (!parsed.success) {
-    return jsonError(
-      parsed.error.issues[0]?.message ?? "Invalid client payload.",
-      400,
-      formatZodErrors(parsed.error),
-    );
-  }
+export const POST = withAuth(async (userId, request) => {
+  const result = await parseBody(request, clientPayloadSchema);
+  if (!result.success) return result.response;
 
   try {
     const client = await prisma.client.create({
       data: {
         userId,
-        name: parsed.data.name,
-        engagementType: parsed.data.engagementType,
-        workingDaysPerWeek: parsed.data.workingDaysPerWeek,
-        workingHoursPerDay: parsed.data.workingHoursPerDay,
-        notes: parsed.data.notes,
+        name: result.data.name,
+        engagementType: result.data.engagementType,
+        workingDaysPerWeek: result.data.workingDaysPerWeek,
+        workingHoursPerDay: result.data.workingHoursPerDay,
+        notes: result.data.notes,
       },
-      select: {
-        id: true,
-        name: true,
-        engagementType: true,
-        workingDaysPerWeek: true,
-        workingHoursPerDay: true,
-        notes: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: CLIENT_SELECT,
     });
 
     return jsonSuccess(mapClientItem(client), {
       status: 201,
-      message: "Client created successfully.",
+      message: CLIENT_MSG.created,
     });
   } catch {
-    return jsonError("Unable to create client right now.", 500);
+    return jsonError(CLIENT_MSG.createError, 500);
   }
-}
+});

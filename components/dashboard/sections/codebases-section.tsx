@@ -1,14 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { ResourcePagination } from "@/components/dashboard/resource-pagination";
 import { ResourceToolbar } from "@/components/dashboard/resource-toolbar";
+import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
+import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
 import {
   CODEBASE_TYPE_OPTIONS,
@@ -48,30 +42,15 @@ export function CodebasesSection() {
         addLabel="Add Codebase"
       />
 
-      <div className="rounded-lg border p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select
-            value={codebases.filters.projectId ?? "__all"}
-            onValueChange={(value) => {
-              codebases.setFilters({
-                projectId: value === "__all" ? undefined : value,
-              });
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[260px]">
-              <SelectValue placeholder="Filter by project" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">All projects</SelectItem>
-              {projectOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <FilterBar>
+        <FilterSelect
+          value={codebases.filters.projectId}
+          onValueChange={(projectId) => codebases.setFilters({ projectId })}
+          options={projectOptions}
+          placeholder="Filter by project"
+          allLabel="All projects"
+        />
+      </FilterBar>
 
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -105,26 +84,12 @@ export function CodebasesSection() {
                     {codebase.description ?? "-"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Edit codebase ${codebase.name}`}
-                        onClick={() => openUpdateCodebaseSheet(codebase)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        aria-label={`Delete codebase ${codebase.name}`}
-                        onClick={() =>
-                          openDeleteDialog("codebase", codebase.id, codebase.name)
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    <ResourceActions
+                      editLabel={`Edit codebase ${codebase.name}`}
+                      deleteLabel={`Delete codebase ${codebase.name}`}
+                      onEdit={() => openUpdateCodebaseSheet(codebase)}
+                      onDelete={() => openDeleteDialog("codebase", codebase.id, codebase.name)}
+                    />
                   </TableCell>
                 </TableRow>
               ))

@@ -1,53 +1,34 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getRequestUserId } from "@/lib/api/auth";
-import {
-  formatZodErrors,
-  jsonError,
-  jsonSuccess,
-  readJsonBody,
-} from "@/lib/api/response";
+import { prisma } from "@/lib/prisma";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import {
   getPaginationMeta,
   parseListQuery,
   resolvePagination,
 } from "@/lib/api/pagination";
+import { withAuth, parseBody, parseFilters } from "@/lib/api/route-helpers";
+import { DROPDOWN_SELECT, PROJECT_SELECT } from "@/lib/api/prisma-selects";
+import { PROJECT_MSG } from "@/lib/api/messages";
+import { requireClient } from "@/lib/api/ownership";
 import { mapDropdownOption, mapProjectItem } from "@/lib/domain/mappers";
 import {
   projectListFiltersSchema,
   projectPayloadSchema,
 } from "@/lib/validation/dashboard";
 
-export async function GET(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withAuth(async (userId, request) => {
   const { searchParams } = new URL(request.url);
   const query = parseListQuery(searchParams);
-  const parsedFilters = projectListFiltersSchema.safeParse({
-    clientId: searchParams.get("clientId"),
-  });
+  const filters = parseFilters(
+    projectListFiltersSchema,
+    { clientId: searchParams.get("clientId") },
+    "Invalid project filters.",
+  );
 
-  if (!parsedFilters.success) {
-    return jsonError(
-      parsedFilters.error.issues[0]?.message ?? "Invalid project filters.",
-      400,
-      formatZodErrors(parsedFilters.error),
-    );
-  }
-
-  const filters = parsedFilters.data;
+  if (!filters.success) return filters.response;
 
   const where = {
-    client: {
-      userId,
-    },
-    ...(filters.clientId
-      ? {
-          clientId: filters.clientId,
-        }
-      : {}),
+    client: { userId },
+    ...(filters.data.clientId ? { clientId: filters.data.clientId } : {}),
     ...(query.search
       ? {
           OR: [
@@ -77,13 +58,8 @@ export async function GET(request: Request) {
     if (query.dropdown) {
       const items = await prisma.project.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
+        select: DROPDOWN_SELECT,
+        orderBy: { name: "asc" },
         skip: pagination.skip,
         take: pagination.take,
       });
@@ -96,23 +72,8 @@ export async function GET(request: Request) {
 
     const items = await prisma.project.findMany({
       where,
-      select: {
-        id: true,
-        clientId: true,
-        name: true,
-        description: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        client: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      select: PROJECT_SELECT,
+      orderBy: { updatedAt: "desc" },
       skip: pagination.skip,
       take: pagination.take,
     });
@@ -122,73 +83,33 @@ export async function GET(request: Request) {
       meta: getPaginationMeta(total, pagination.page, pagination.pageSize),
     });
   } catch {
-    return jsonError("Unable to fetch projects right now.", 500);
+    return jsonError(PROJECT_MSG.listError, 500);
   }
-}
+});
 
-export async function POST(request: Request) {
-  const userId = await getRequestUserId();
-  if (!userId) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return jsonError("Invalid request payload.", 400);
-  }
-
-  const parsed = projectPayloadSchema.safeParse(bodyResult.data);
-  if (!parsed.success) {
-    return jsonError(
-      parsed.error.issues[0]?.message ?? "Invalid project payload.",
-      400,
-      formatZodErrors(parsed.error),
-    );
-  }
+export const POST = withAuth(async (userId, request) => {
+  const result = await parseBody(request, projectPayloadSchema);
+  if (!result.success) return result.response;
 
   try {
-    const client = await prisma.client.findFirst({
-      where: {
-        id: parsed.data.clientId,
-        userId,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!client) {
-      return jsonError("Client not found.", 404);
-    }
+    const error = await requireClient(userId, result.data.clientId);
+    if (error) return error;
 
     const project = await prisma.project.create({
       data: {
-        clientId: parsed.data.clientId,
-        name: parsed.data.name,
-        description: parsed.data.description,
-        status: parsed.data.status,
+        clientId: result.data.clientId,
+        name: result.data.name,
+        description: result.data.description,
+        status: result.data.status,
       },
-      select: {
-        id: true,
-        clientId: true,
-        name: true,
-        description: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        client: {
-          select: {
-            name: true,
-          },
-        },
-      },
+      select: PROJECT_SELECT,
     });
 
     return jsonSuccess(mapProjectItem(project), {
       status: 201,
-      message: "Project created successfully.",
+      message: PROJECT_MSG.created,
     });
   } catch {
-    return jsonError("Unable to create project right now.", 500);
+    return jsonError(PROJECT_MSG.createError, 500);
   }
-}
+});
