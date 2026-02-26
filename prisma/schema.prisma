@@ -18,35 +18,16 @@ enum ProjectStatus {
   ARCHIVED
 }
 
-enum CodebaseType {
-  WEB
-  API
-  MOBILE_ANDROID
-  MOBILE_IOS
-  DESKTOP
-  INFRA
-  OTHER
-}
-
-enum LinkCategory {
-  REPOSITORY
-  SERVER
-  COMMUNICATION
-  DOCUMENTATION
-  DESIGN
-  TRACKING
-  OTHER
-}
-
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String?
   passwordHash String
   clients      Client[]
-  links        Link[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  links         Link[]
+  files         File[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Client {
@@ -56,9 +37,15 @@ model Client {
   engagementType     EngagementType @default(TIME_BASED)
   workingDaysPerWeek Int?
   workingHoursPerDay Int?
+  email              String?
+  phone              String?
+  whatsapp           String?
+  address            String?
   notes              String?
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects           Project[]
+  links              Link[]
+  files              File[]
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -74,6 +61,7 @@ model Project {
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   codebases   Codebase[]
   links       Link[]
+  files       File[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -84,10 +72,10 @@ model Codebase {
   id          String       @id @default(cuid())
   projectId   String
   name        String
-  type        CodebaseType @default(OTHER)
   description String?
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   links       Link[]
+  files       File[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -97,19 +85,43 @@ model Codebase {
 model Link {
   id         String       @id @default(cuid())
   userId     String
-  projectId  String
+  clientId   String?
+  projectId  String?
   codebaseId String?
   title      String
   url        String
-  category   LinkCategory @default(OTHER)
-  notes      String?
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client     Client?      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project    Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   codebase   Codebase?    @relation(fields: [codebaseId], references: [id], onDelete: Cascade)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
   @@index([userId])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([codebaseId])
+}
+
+model File {
+  id          String    @id @default(cuid())
+  userId      String
+  clientId    String?
+  projectId   String?
+  codebaseId  String?
+  filename    String
+  storagePath String
+  mimeType    String
+  sizeBytes   Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  codebase    Codebase? @relation(fields: [codebaseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([clientId])
   @@index([projectId])
   @@index([codebaseId])
 }

@@ -57,7 +57,6 @@ export const PUT = withAuth(async (userId, request, context) => {
         data: {
           projectId: result.data.projectId,
           name: result.data.name,
-          type: result.data.type,
           description: result.data.description,
         },
       });

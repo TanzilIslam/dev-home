@@ -23,19 +23,22 @@ export type ClientField =
   | "engagementType"
   | "workingDaysPerWeek"
   | "workingHoursPerDay"
+  | "email"
+  | "phone"
+  | "whatsapp"
+  | "address"
   | "notes";
 
 export type ProjectField = "clientId" | "name" | "description" | "status";
 
-export type CodebaseField = "projectId" | "name" | "type" | "description";
+export type CodebaseField = "projectId" | "name" | "description";
 
 export type LinkField =
+  | "clientId"
   | "projectId"
   | "codebaseId"
   | "title"
-  | "url"
-  | "category"
-  | "notes";
+  | "url";
 
 // ---------------------------------------------------------------------------
 // Composite state types
@@ -67,10 +70,10 @@ export type DashboardContextValue = {
   // Paginated lists
   clients: UsePaginatedListReturn<ClientItem, Record<string, never>>;
   projects: UsePaginatedListReturn<ProjectItem, { clientId?: string }>;
-  codebases: UsePaginatedListReturn<CodebaseItem, { projectId?: string }>;
+  codebases: UsePaginatedListReturn<CodebaseItem, { clientId?: string; projectId?: string }>;
   links: UsePaginatedListReturn<
     LinkItem,
-    { projectId?: string; codebaseId?: string }
+    { clientId?: string; projectId?: string; codebaseId?: string }
   >;
 
   // Sheet (create / update form)
@@ -123,6 +126,10 @@ export type DashboardContextValue = {
   setCodebaseErrors: React.Dispatch<
     React.SetStateAction<FormErrorMap<CodebaseField>>
   >;
+  codebaseFormClientId: string;
+  setCodebaseFormClientId: React.Dispatch<React.SetStateAction<string>>;
+  codebaseFormProjectOptions: SelectOption[];
+  loadCbFormProjectDropdown: (clientId?: string) => Promise<void>;
   openCreateCodebaseSheet: () => void;
   openUpdateCodebaseSheet: (codebase: CodebaseItem) => void;
 
@@ -133,6 +140,8 @@ export type DashboardContextValue = {
   setLinkErrors: React.Dispatch<
     React.SetStateAction<FormErrorMap<LinkField>>
   >;
+  linkFormProjectOptions: SelectOption[];
+  loadLinkFormProjectDropdown: (clientId?: string) => Promise<void>;
   linkFormCodebaseOptions: SelectOption[];
   loadLinkFormCodebaseDropdown: (projectId?: string) => Promise<void>;
   openCreateLinkSheet: () => void;
@@ -142,6 +151,10 @@ export type DashboardContextValue = {
   clientOptions: SelectOption[];
   projectOptions: SelectOption[];
   codebaseOptions: SelectOption[];
+  cbFilterProjectOptions: SelectOption[];
+  loadCbFilterProjectDropdown: (clientId?: string) => Promise<void>;
+  linkFilterProjectOptions: SelectOption[];
+  loadLinkFilterProjectDropdown: (clientId?: string) => Promise<void>;
   linkFilterCodebaseOptions: SelectOption[];
   loadLinkFilterCodebaseDropdown: (projectId?: string) => Promise<void>;
 };

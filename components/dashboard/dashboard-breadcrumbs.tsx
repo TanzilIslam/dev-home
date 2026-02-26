@@ -16,7 +16,11 @@ const SECTION_LABELS: Record<string, string> = {
   projects: "Projects",
   codebases: "Codebases",
   links: "Links",
-  settings: "Settings",
+  profile: "Profile",
+};
+
+const SECTION_PARENT: Record<string, string> = {
+  profile: "Settings",
 };
 
 export function DashboardBreadcrumbs() {
@@ -26,6 +30,7 @@ export function DashboardBreadcrumbs() {
   const setExpandedClient = useAppStore((s) => s.setExpandedClient);
 
   const sectionLabel = SECTION_LABELS[activeSection] ?? activeSection;
+  const parentLabel = SECTION_PARENT[activeSection];
   const isClientExpanded = activeSection === "clients" && !!expandedClientName;
 
   return (
@@ -44,7 +49,17 @@ export function DashboardBreadcrumbs() {
           )}
         </BreadcrumbItem>
 
-        {/* Show section when not on overview, or always when on a real section */}
+        {/* Parent group label (e.g. "Settings" for profile) */}
+        {parentLabel && (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{parentLabel}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
+
+        {/* Show section when not on overview */}
         {activeSection !== "overview" && (
           <>
             <BreadcrumbSeparator />

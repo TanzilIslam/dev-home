@@ -2,29 +2,16 @@ import type { PaginatedData } from "@/types/pagination";
 
 export type EngagementType = "TIME_BASED" | "PROJECT_BASED";
 export type ProjectStatus = "ACTIVE" | "PAUSED" | "ARCHIVED";
-export type CodebaseType =
-  | "WEB"
-  | "API"
-  | "MOBILE_ANDROID"
-  | "MOBILE_IOS"
-  | "DESKTOP"
-  | "INFRA"
-  | "OTHER";
-export type LinkCategory =
-  | "REPOSITORY"
-  | "SERVER"
-  | "COMMUNICATION"
-  | "DOCUMENTATION"
-  | "DESIGN"
-  | "TRACKING"
-  | "OTHER";
-
 export interface ClientItem {
   id: string;
   name: string;
   engagementType: EngagementType;
   workingDaysPerWeek: number | null;
   workingHoursPerDay: number | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -43,10 +30,11 @@ export interface ProjectItem {
 
 export interface CodebaseItem {
   id: string;
+  clientId: string;
+  clientName: string;
   projectId: string;
   projectName: string;
   name: string;
-  type: CodebaseType;
   description: string | null;
   createdAt: string;
   updatedAt: string;
@@ -54,14 +42,14 @@ export interface CodebaseItem {
 
 export interface LinkItem {
   id: string;
-  projectId: string;
-  projectName: string;
+  clientId: string | null;
+  clientName: string | null;
+  projectId: string | null;
+  projectName: string | null;
   codebaseId: string | null;
   codebaseName: string | null;
   title: string;
   url: string;
-  category: LinkCategory;
-  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,11 +65,35 @@ export type CodebaseListData = PaginatedData<CodebaseItem>;
 export type LinkListData = PaginatedData<LinkItem>;
 export type DropdownListData = PaginatedData<DropdownOption>;
 
+export interface FileItem {
+  id: string;
+  clientId: string | null;
+  projectId: string | null;
+  codebaseId: string | null;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FileListData = PaginatedData<FileItem>;
+
+export interface FileListQueryParams extends ListQueryParams {
+  clientId?: string;
+  projectId?: string;
+  codebaseId?: string;
+}
+
 export interface ClientPayload {
   name: string;
   engagementType: EngagementType;
   workingDaysPerWeek?: number | null;
   workingHoursPerDay?: number | null;
+  email?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  address?: string | null;
   notes?: string | null;
 }
 
@@ -95,17 +107,15 @@ export interface ProjectPayload {
 export interface CodebasePayload {
   projectId: string;
   name: string;
-  type: CodebaseType;
   description?: string | null;
 }
 
 export interface LinkPayload {
-  projectId: string;
+  clientId?: string | null;
+  projectId?: string | null;
   codebaseId?: string | null;
   title: string;
   url: string;
-  category: LinkCategory;
-  notes?: string | null;
 }
 
 export interface ListQueryParams {
@@ -121,10 +131,13 @@ export interface ProjectListQueryParams extends ListQueryParams {
 }
 
 export interface CodebaseListQueryParams extends ListQueryParams {
+  clientId?: string;
   projectId?: string;
 }
 
 export interface LinkListQueryParams extends ListQueryParams {
+  clientId?: string;
   projectId?: string;
   codebaseId?: string;
 }
+

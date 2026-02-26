@@ -9,6 +9,7 @@ import { withAuth, parseBody, parseFilters } from "@/lib/api/route-helpers";
 import { LINK_SELECT } from "@/lib/api/prisma-selects";
 import { LINK_MSG } from "@/lib/api/messages";
 import {
+  requireClient,
   requireProject,
   requireCodebaseForProject,
 } from "@/lib/api/ownership";
@@ -21,6 +22,7 @@ export const GET = withAuth(async (userId, request) => {
   const filters = parseFilters(
     linkListFiltersSchema,
     {
+      clientId: searchParams.get("clientId"),
       projectId: searchParams.get("projectId"),
       codebaseId: searchParams.get("codebaseId"),
     },
@@ -31,6 +33,7 @@ export const GET = withAuth(async (userId, request) => {
 
   const where = {
     userId,
+    ...(filters.data.clientId ? { clientId: filters.data.clientId } : {}),
     ...(filters.data.projectId ? { projectId: filters.data.projectId } : {}),
     ...(filters.data.codebaseId ? { codebaseId: filters.data.codebaseId } : {}),
     ...(query.search
@@ -46,6 +49,14 @@ export const GET = withAuth(async (userId, request) => {
               url: {
                 contains: query.search,
                 mode: "insensitive" as const,
+              },
+            },
+            {
+              client: {
+                name: {
+                  contains: query.search,
+                  mode: "insensitive" as const,
+                },
               },
             },
             {
@@ -110,27 +121,33 @@ export const POST = withAuth(async (userId, request) => {
   if (!result.success) return result.response;
 
   try {
-    const projectError = await requireProject(userId, result.data.projectId);
-    if (projectError) return projectError;
+    if (result.data.clientId) {
+      const clientError = await requireClient(userId, result.data.clientId);
+      if (clientError) return clientError;
+    }
 
-    if (result.data.codebaseId) {
-      const codebaseError = await requireCodebaseForProject(
-        userId,
-        result.data.codebaseId,
-        result.data.projectId,
-      );
-      if (codebaseError) return codebaseError;
+    if (result.data.projectId) {
+      const projectError = await requireProject(userId, result.data.projectId);
+      if (projectError) return projectError;
+
+      if (result.data.codebaseId) {
+        const codebaseError = await requireCodebaseForProject(
+          userId,
+          result.data.codebaseId,
+          result.data.projectId,
+        );
+        if (codebaseError) return codebaseError;
+      }
     }
 
     const link = await prisma.link.create({
       data: {
         userId,
+        clientId: result.data.clientId,
         projectId: result.data.projectId,
         codebaseId: result.data.codebaseId,
         title: result.data.title,
         url: result.data.url,
-        category: result.data.category,
-        notes: result.data.notes,
       },
       select: LINK_SELECT,
     });

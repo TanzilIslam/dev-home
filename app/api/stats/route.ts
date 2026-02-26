@@ -10,8 +10,6 @@ export const GET = withAuth(async (userId) => {
       totalCodebases,
       totalLinks,
       projectsByStatus,
-      codebasesByType,
-      linksByCategory,
       recentLinks,
     ] = await Promise.all([
       prisma.client.count({ where: { userId } }),
@@ -23,16 +21,6 @@ export const GET = withAuth(async (userId) => {
         _count: true,
         where: { client: { userId } },
       }),
-      prisma.codebase.groupBy({
-        by: ["type"],
-        _count: true,
-        where: { project: { client: { userId } } },
-      }),
-      prisma.link.groupBy({
-        by: ["category"],
-        _count: true,
-        where: { userId },
-      }),
       prisma.link.findMany({
         where: { userId },
         orderBy: { updatedAt: "desc" },
@@ -41,8 +29,8 @@ export const GET = withAuth(async (userId) => {
           id: true,
           title: true,
           url: true,
-          category: true,
           updatedAt: true,
+          client: { select: { name: true } },
           project: { select: { name: true } },
           codebase: { select: { name: true } },
         },
@@ -58,21 +46,13 @@ export const GET = withAuth(async (userId) => {
         name: g.status,
         count: g._count,
       })),
-      codebasesByType: codebasesByType.map((g) => ({
-        name: g.type,
-        count: g._count,
-      })),
-      linksByCategory: linksByCategory.map((g) => ({
-        name: g.category,
-        count: g._count,
-      })),
       recentLinks: recentLinks.map((l) => ({
         id: l.id,
         title: l.title,
         url: l.url,
-        projectName: l.project.name,
+        clientName: l.client?.name ?? null,
+        projectName: l.project?.name ?? null,
         codebaseName: l.codebase?.name ?? null,
-        category: l.category,
         updatedAt: l.updatedAt.toISOString(),
       })),
     });

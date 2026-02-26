@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -14,16 +13,14 @@ import { ResourceToolbar } from "@/components/dashboard/resource-toolbar";
 import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
 import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
-import {
-  CODEBASE_TYPE_OPTIONS,
-  getLabelByValue,
-} from "@/lib/constants/domain";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
 
 export function CodebasesSection() {
   const {
     codebases,
-    projectOptions,
+    clientOptions,
+    cbFilterProjectOptions,
+    loadCbFilterProjectDropdown,
     openCreateCodebaseSheet,
     openUpdateCodebaseSheet,
     openDeleteDialog,
@@ -36,19 +33,28 @@ export function CodebasesSection() {
         description="Manage repositories and app surfaces inside each project."
         searchValue={codebases.query}
         onSearchChange={codebases.setQuery}
-        pageSize={codebases.pageSize}
-        onPageSizeChange={codebases.setPageSize}
         onAdd={openCreateCodebaseSheet}
         addLabel="Add Codebase"
       />
 
       <FilterBar>
         <FilterSelect
+          value={codebases.filters.clientId}
+          onValueChange={(clientId) => {
+            codebases.setFilters({ clientId, projectId: undefined });
+            void loadCbFilterProjectDropdown(clientId);
+          }}
+          options={clientOptions}
+          placeholder="Filter by client"
+          allLabel="All clients"
+        />
+        <FilterSelect
           value={codebases.filters.projectId}
-          onValueChange={(projectId) => codebases.setFilters({ projectId })}
-          options={projectOptions}
+          onValueChange={(projectId) => codebases.setFilters({ ...codebases.filters, projectId })}
+          options={cbFilterProjectOptions}
           placeholder="Filter by project"
           allLabel="All projects"
+          disabled={!codebases.filters.clientId}
         />
       </FilterBar>
 
@@ -57,8 +63,8 @@ export function CodebasesSection() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Client</TableHead>
               <TableHead>Project</TableHead>
-              <TableHead>Type</TableHead>
               <TableHead className="hidden lg:table-cell">Description</TableHead>
               <TableHead className="w-[160px] text-right">Actions</TableHead>
             </TableRow>
@@ -73,13 +79,9 @@ export function CodebasesSection() {
             ) : (
               codebases.items.map((codebase) => (
                 <TableRow key={codebase.id}>
-                  <TableCell className="font-medium">{codebase.name}</TableCell>
+                  <TableCell className="font-medium">{codebase.projectName} - {codebase.name}</TableCell>
+                  <TableCell>{codebase.clientName}</TableCell>
                   <TableCell>{codebase.projectName}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {getLabelByValue(CODEBASE_TYPE_OPTIONS, codebase.type)}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-muted-foreground hidden max-w-[280px] truncate lg:table-cell">
                     {codebase.description ?? "-"}
                   </TableCell>
@@ -98,7 +100,7 @@ export function CodebasesSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={codebases.meta} onPageChange={codebases.setPage} />
+      <ResourcePagination meta={codebases.meta} onPageChange={codebases.setPage} pageSize={codebases.pageSize} onPageSizeChange={codebases.setPageSize} />
     </div>
   );
 }

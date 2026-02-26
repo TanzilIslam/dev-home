@@ -3,34 +3,21 @@
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type ResourceToolbarProps = {
   title: string;
   description: string;
   searchValue: string;
   onSearchChange: (value: string) => void;
-  pageSize: number;
-  onPageSizeChange: (size: number) => void;
   onAdd: () => void;
   addLabel: string;
 };
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 export function ResourceToolbar({
   title,
   description,
   searchValue,
   onSearchChange,
-  pageSize,
-  onPageSizeChange,
   onAdd,
   addLabel,
 }: ResourceToolbarProps) {
@@ -64,28 +51,10 @@ export function ResourceToolbar({
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Select
-            value={String(pageSize)}
-            onValueChange={(value) => onPageSizeChange(Number(value))}
-          >
-            <SelectTrigger className="w-[92px]" aria-label="Rows per page">
-              <SelectValue placeholder="Rows" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={String(option)}>
-                  {option} / page
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button onClick={onAdd} aria-label={addLabel}>
-            <PlusIcon className="size-4" />
-            {addLabel}
-          </Button>
-        </div>
+        <Button onClick={onAdd} aria-label={addLabel}>
+          <PlusIcon className="size-4" />
+          {addLabel}
+        </Button>
       </div>
     </div>
   );

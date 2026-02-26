@@ -20,14 +20,17 @@ export const GET = withAuth(async (userId, request) => {
   const query = parseListQuery(searchParams);
   const filters = parseFilters(
     codebaseListFiltersSchema,
-    { projectId: searchParams.get("projectId") },
+    { clientId: searchParams.get("clientId"), projectId: searchParams.get("projectId") },
     "Invalid codebase filters.",
   );
 
   if (!filters.success) return filters.response;
 
   const where = {
-    project: { client: { userId } },
+    project: {
+      client: { userId },
+      ...(filters.data.clientId ? { clientId: filters.data.clientId } : {}),
+    },
     ...(filters.data.projectId ? { projectId: filters.data.projectId } : {}),
     ...(query.search
       ? {
@@ -99,7 +102,6 @@ export const POST = withAuth(async (userId, request) => {
       data: {
         projectId: result.data.projectId,
         name: result.data.name,
-        type: result.data.type,
         description: result.data.description,
       },
       select: CODEBASE_SELECT,

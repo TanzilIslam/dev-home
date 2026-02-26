@@ -24,8 +24,10 @@ import {
   PROJECT_STATUS_OPTIONS,
   getLabelByValue,
 } from "@/lib/constants/domain";
-import { listProjects } from "@/lib/api/client";
-import type { ProjectItem } from "@/types/domain";
+import { listFiles, listProjects } from "@/lib/api/client";
+import { viewFile } from "@/lib/upload/download";
+import { FileList } from "@/components/dashboard/file-list";
+import type { FileItem, ProjectItem } from "@/types/domain";
 
 export function ClientsSection() {
   const {
@@ -41,6 +43,8 @@ export function ClientsSection() {
 
   const [expandedProjects, setExpandedProjects] = useState<ProjectItem[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [expandedFiles, setExpandedFiles] = useState<FileItem[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   useEffect(() => {
     if (!expandedClientId) return;
@@ -64,6 +68,23 @@ export function ClientsSection() {
         }
       });
 
+    listFiles({ clientId: expandedClientId, all: true })
+      .then((data) => {
+        if (!cancelled) {
+          setExpandedFiles(data?.items ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExpandedFiles([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingFiles(false);
+        }
+      });
+
     return () => {
       cancelled = true;
     };
@@ -73,9 +94,11 @@ export function ClientsSection() {
     if (expandedClientId === clientId) {
       setExpandedClient(null, null);
       setExpandedProjects([]);
+      setExpandedFiles([]);
     } else {
       setExpandedClient(clientId, clientName);
       setIsLoadingProjects(true);
+      setIsLoadingFiles(true);
     }
   }
 
@@ -88,8 +111,6 @@ export function ClientsSection() {
         description="Manage client workload settings and engagement types."
         searchValue={clients.query}
         onSearchChange={clients.setQuery}
-        pageSize={clients.pageSize}
-        onPageSizeChange={clients.setPageSize}
         onAdd={openCreateClientSheet}
         addLabel="Add Client"
       />
@@ -125,6 +146,8 @@ export function ClientsSection() {
                     totalColumns={totalColumns}
                     isLoadingProjects={isLoadingProjects}
                     expandedProjects={expandedProjects}
+                    expandedFiles={expandedFiles}
+                    isLoadingFiles={isLoadingFiles}
                     expandedClientName={expandedClientName}
                     onToggleExpand={() => toggleExpand(client.id, client.name)}
                     onEdit={() => openUpdateClientSheet(client)}
@@ -139,7 +162,7 @@ export function ClientsSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={clients.meta} onPageChange={clients.setPage} />
+      <ResourcePagination meta={clients.meta} onPageChange={clients.setPage} pageSize={clients.pageSize} onPageSizeChange={clients.setPageSize} />
     </>
   );
 }
@@ -155,12 +178,18 @@ type ClientRowGroupProps = {
     engagementType: string;
     workingDaysPerWeek: number | null;
     workingHoursPerDay: number | null;
+    email: string | null;
+    phone: string | null;
+    whatsapp: string | null;
+    address: string | null;
     notes: string | null;
   };
   isExpanded: boolean;
   totalColumns: number;
   isLoadingProjects: boolean;
   expandedProjects: ProjectItem[];
+  expandedFiles: FileItem[];
+  isLoadingFiles: boolean;
   expandedClientName: string | null;
   onToggleExpand: () => void;
   onEdit: () => void;
@@ -173,6 +202,8 @@ function ClientRowGroup({
   totalColumns,
   isLoadingProjects,
   expandedProjects,
+  expandedFiles,
+  isLoadingFiles,
   expandedClientName,
   onToggleExpand,
   onEdit,
@@ -256,6 +287,22 @@ function ClientRowGroup({
                     </dd>
                   </div>
                   <div>
+                    <dt className="text-muted-foreground">Email</dt>
+                    <dd>{client.email ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Phone</dt>
+                    <dd>{client.phone ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">WhatsApp</dt>
+                    <dd>{client.whatsapp ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Address</dt>
+                    <dd>{client.address ?? "None"}</dd>
+                  </div>
+                  <div>
                     <dt className="text-muted-foreground">Notes</dt>
                     <dd>{client.notes ?? "None"}</dd>
                   </div>
@@ -311,6 +358,21 @@ function ClientRowGroup({
                     </TableBody>
                   </Table>
                 )}
+              </div>
+
+              {/* Files sub-section */}
+              <div className="rounded-md border bg-background">
+                <div className="border-b px-4 py-3">
+                  <h4 className="text-sm font-semibold">Files</h4>
+                </div>
+                <div className="px-4 py-3">
+                  <FileList
+                    files={expandedFiles}
+                    isLoading={isLoadingFiles}
+                    readOnly
+                    onView={viewFile}
+                  />
+                </div>
               </div>
             </div>
           </TableCell>

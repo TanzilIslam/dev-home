@@ -2,11 +2,9 @@
   ClientPayload,
   CodebasePayload,
   EngagementType,
-  LinkCategory,
   LinkPayload,
   ProjectPayload,
   ProjectStatus,
-  CodebaseType,
 } from "@/types/domain";
 
 export interface SelectOption {
@@ -31,6 +29,10 @@ export const DEFAULT_CLIENT_FORM_VALUES: ClientFormValues = {
   engagementType: "TIME_BASED" satisfies EngagementType,
   workingDaysPerWeek: 5,
   workingHoursPerDay: 8,
+  email: null,
+  phone: null,
+  whatsapp: null,
+  address: null,
   notes: null,
 };
 
@@ -44,15 +46,13 @@ export const DEFAULT_PROJECT_FORM_VALUES: ProjectFormValues = {
 export const DEFAULT_CODEBASE_FORM_VALUES: CodebaseFormValues = {
   projectId: "",
   name: "",
-  type: "WEB" satisfies CodebaseType,
   description: null,
 };
 
 export const DEFAULT_LINK_FORM_VALUES: LinkFormValues = {
+  clientId: null,
   projectId: "",
   codebaseId: null,
   title: "",
   url: "",
-  category: "REPOSITORY" satisfies LinkCategory,
-  notes: null,
 };

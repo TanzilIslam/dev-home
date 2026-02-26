@@ -1,13 +1,22 @@
+import "dotenv/config";
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/auth/password";
 
 async function main() {
+  const existing = await prisma.user.findUnique({
+    where: { email: "demo@devhome.local" },
+    select: { id: true },
+  });
+
+  if (existing) {
+    await prisma.user.delete({ where: { id: existing.id } });
+    console.log("Cleaned up existing demo user data.");
+  }
+
   const passwordHash = await hashPassword("password123");
 
-  const user = await prisma.user.upsert({
-    where: { email: "demo@devhome.local" },
-    update: {},
-    create: {
+  const user = await prisma.user.create({
+    data: {
       email: "demo@devhome.local",
       name: "Demo User",
       passwordHash,
@@ -23,6 +32,10 @@ async function main() {
       engagementType: "TIME_BASED",
       workingDaysPerWeek: 5,
       workingHoursPerDay: 8,
+      email: "contact@acmecorp.com",
+      phone: "+1-555-0100",
+      whatsapp: "+1-555-0101",
+      address: "123 Enterprise Blvd, Suite 400, San Francisco, CA 94105",
       notes: "Primary enterprise client. Weekly syncs on Mondays.",
     },
   });
@@ -32,6 +45,8 @@ async function main() {
       userId: user.id,
       name: "Stellar Labs",
       engagementType: "PROJECT_BASED",
+      email: "team@stellarlabs.io",
+      phone: "+1-555-0200",
       notes: "Startup client, project-based engagements.",
     },
   });
@@ -80,7 +95,6 @@ async function main() {
     data: {
       projectId: acmePortal.id,
       name: "portal-frontend",
-      type: "WEB",
       description: "Next.js frontend for the customer portal.",
     },
   });
@@ -89,7 +103,6 @@ async function main() {
     data: {
       projectId: acmePortal.id,
       name: "portal-api",
-      type: "API",
       description: "Express REST API serving the portal.",
     },
   });
@@ -98,7 +111,6 @@ async function main() {
     data: {
       projectId: acmeApi.id,
       name: "api-gateway",
-      type: "API",
       description: "Kong API gateway configuration.",
     },
   });
@@ -107,7 +119,6 @@ async function main() {
     data: {
       projectId: stellarMobile.id,
       name: "stellar-android",
-      type: "MOBILE_ANDROID",
       description: "Kotlin Android app.",
     },
   });
@@ -116,7 +127,6 @@ async function main() {
     data: {
       projectId: stellarMobile.id,
       name: "stellar-infra",
-      type: "INFRA",
       description: "Terraform infrastructure for mobile backend.",
     },
   });
@@ -130,7 +140,6 @@ async function main() {
       codebaseId: portalWeb.id,
       title: "Portal Frontend Repo",
       url: "https://github.com/acme/portal-frontend",
-      category: "REPOSITORY" as const,
     },
     {
       userId: user.id,
@@ -138,22 +147,18 @@ async function main() {
       codebaseId: portalApi.id,
       title: "Portal API Repo",
       url: "https://github.com/acme/portal-api",
-      category: "REPOSITORY" as const,
     },
     {
       userId: user.id,
       projectId: acmePortal.id,
       title: "Portal Staging",
       url: "https://staging.portal.acme.com",
-      category: "SERVER" as const,
-      notes: "Staging environment, deploys on merge to develop.",
     },
     {
       userId: user.id,
       projectId: acmePortal.id,
       title: "Portal Figma Designs",
       url: "https://figma.com/file/acme-portal",
-      category: "DESIGN" as const,
     },
     {
       userId: user.id,
@@ -161,14 +166,12 @@ async function main() {
       codebaseId: apiGateway.id,
       title: "API Gateway Repo",
       url: "https://github.com/acme/api-gateway",
-      category: "REPOSITORY" as const,
     },
     {
       userId: user.id,
       projectId: acmeApi.id,
       title: "API Documentation",
       url: "https://docs.api.acme.com",
-      category: "DOCUMENTATION" as const,
     },
     {
       userId: user.id,
@@ -176,29 +179,36 @@ async function main() {
       codebaseId: mobileAndroid.id,
       title: "Android Repo",
       url: "https://github.com/stellar/android-app",
-      category: "REPOSITORY" as const,
     },
     {
       userId: user.id,
       projectId: stellarMobile.id,
       title: "Stellar Slack Channel",
       url: "https://stellar-labs.slack.com/channels/mobile-v2",
-      category: "COMMUNICATION" as const,
     },
     {
       userId: user.id,
       projectId: stellarMobile.id,
       title: "Sprint Board",
       url: "https://linear.app/stellar/project/mobile-v2",
-      category: "TRACKING" as const,
     },
     {
       userId: user.id,
       projectId: stellarLegacy.id,
       title: "Migration Runbook",
       url: "https://notion.so/stellar/legacy-migration",
-      category: "DOCUMENTATION" as const,
-      notes: "Step-by-step migration guide.",
+    },
+    {
+      userId: user.id,
+      clientId: acmeCorp.id,
+      title: "Acme Corp Website",
+      url: "https://www.acmecorp.com",
+    },
+    {
+      userId: user.id,
+      clientId: stellarLabs.id,
+      title: "Stellar Labs Slack Workspace",
+      url: "https://stellar-labs.slack.com",
     },
   ];
 

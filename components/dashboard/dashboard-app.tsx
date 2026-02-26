@@ -32,9 +32,7 @@ import {
   updateProject,
 } from "@/lib/api/client";
 import {
-  CODEBASE_TYPE_OPTIONS,
   ENGAGEMENT_TYPE_OPTIONS,
-  LINK_CATEGORY_OPTIONS,
   PROJECT_STATUS_OPTIONS,
 } from "@/lib/constants/domain";
 import {
@@ -51,8 +49,10 @@ import {
   projectPayloadSchema,
 } from "@/lib/validation/dashboard";
 import { useDropdownLoader } from "@/hooks/use-dropdown-loader";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
-import { useAppStore } from "@/store/use-app-store";
+import { useAppStore, sectionFromPathname, type DashboardSection } from "@/store/use-app-store";
+import { downloadFile, viewFile } from "@/lib/upload/download";
 import type {
   ClientItem,
   CodebaseItem,
@@ -94,12 +94,15 @@ import { CodebasesSection } from "@/components/dashboard/sections/codebases-sect
 import { LinksSection } from "@/components/dashboard/sections/links-section";
 import { OverviewSection } from "@/components/dashboard/sections/overview-section";
 import { SettingsSection } from "@/components/dashboard/sections/settings-section";
+import { FileUploadInput } from "@/components/dashboard/file-upload-input";
+import { FileList } from "@/components/dashboard/file-list";
 
 type DashboardAppProps = {
   user: {
     email: string;
     name: string | null;
   };
+  initialSection?: DashboardSection;
 };
 
 type MutationAction = SheetMode | "delete";
@@ -125,17 +128,20 @@ const CLIENT_FIELDS = [
   "engagementType",
   "workingDaysPerWeek",
   "workingHoursPerDay",
+  "email",
+  "phone",
+  "whatsapp",
+  "address",
   "notes",
 ] as const;
 const PROJECT_FIELDS = ["clientId", "name", "description", "status"] as const;
-const CODEBASE_FIELDS = ["projectId", "name", "type", "description"] as const;
+const CODEBASE_FIELDS = ["projectId", "name", "description"] as const;
 const LINK_FIELDS = [
+  "clientId",
   "projectId",
   "codebaseId",
   "title",
   "url",
-  "category",
-  "notes",
 ] as const;
 
 function getEntityLabel(entity: DashboardEntity) {
@@ -167,14 +173,42 @@ function ActiveSection({ user }: { user: DashboardAppProps["user"] }) {
       return <CodebasesSection />;
     case "links":
       return <LinksSection />;
-    case "settings":
+    case "profile":
       return <SettingsSection user={user} />;
     default:
       return <OverviewSection />;
   }
 }
 
-export function DashboardApp({ user }: DashboardAppProps) {
+export function DashboardApp({ user, initialSection }: DashboardAppProps) {
+  // Set store synchronously so server and client render the same section
+  const initializedRef = useRef(false);
+  if (!initializedRef.current) {
+    initializedRef.current = true;
+    if (initialSection && initialSection !== "overview") {
+      useAppStore.setState({
+        activeSection: initialSection,
+        expandedClientId: null,
+        expandedClientName: null,
+      });
+    }
+  }
+
+  // Handle browser back/forward
+  useEffect(() => {
+    function handlePopState() {
+      const section = sectionFromPathname(window.location.pathname);
+      useAppStore.setState({
+        activeSection: section,
+        expandedClientId: null,
+        expandedClientName: null,
+      });
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const [sheetState, setSheetState] = useState<SheetState>(INITIAL_SHEET_STATE);
   const [deleteState, setDeleteState] = useState<DeleteState>(INITIAL_DELETE_STATE);
   const [isSheetSubmitting, setIsSheetSubmitting] = useState(false);
@@ -183,8 +217,21 @@ export function DashboardApp({ user }: DashboardAppProps) {
   const { options: clientOptions, load: loadClientOptions } = useDropdownLoader(listClientDropdown);
   const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(listProjectDropdown);
   const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(listCodebaseDropdown);
+  const { options: codebaseFormProjectOptions, load: loadCbFormPj, clear: clearCbFormPj } = useDropdownLoader(listProjectDropdown);
+  const { options: linkFormProjectOptions, load: loadLinkFormPj, clear: clearLinkFormPj } = useDropdownLoader(listProjectDropdown);
   const { options: linkFormCodebaseOptions, load: loadLinkFormCb, clear: clearLinkFormCb } = useDropdownLoader(listCodebaseDropdown);
+  const { options: cbFilterProjectOptions, load: loadCbFilterPj, clear: clearCbFilterPj } = useDropdownLoader(listProjectDropdown);
+  const { options: linkFilterProjectOptions, load: loadLinkFilterPj, clear: clearLinkFilterPj } = useDropdownLoader(listProjectDropdown);
   const { options: linkFilterCodebaseOptions, load: loadLinkFilterCb, clear: clearLinkFilterCb } = useDropdownLoader(listCodebaseDropdown);
+  const clientFileUpload = useFileUpload({
+    scope: {
+      clientId:
+        sheetState.entity === "client" && sheetState.mode === "update" && sheetState.id
+          ? sheetState.id
+          : undefined,
+    },
+  });
+
   const lastListErrorRef = useRef("");
   const lastListErrorAtRef = useRef(0);
 
@@ -220,18 +267,18 @@ export function DashboardApp({ user }: DashboardAppProps) {
     onError: (error) => handleListError(error, "Unable to fetch projects."),
   });
 
-  const codebases = usePaginatedList<CodebaseItem, { projectId?: string }>({
+  const codebases = usePaginatedList<CodebaseItem, { clientId?: string; projectId?: string }>({
     fetcher: listCodebases,
-    initialFilters: { projectId: undefined },
+    initialFilters: { clientId: undefined, projectId: undefined },
     onError: (error) => handleListError(error, "Unable to fetch codebases."),
   });
 
   const links = usePaginatedList<
     LinkItem,
-    { projectId?: string; codebaseId?: string }
+    { clientId?: string; projectId?: string; codebaseId?: string }
   >({
     fetcher: listLinks,
-    initialFilters: { projectId: undefined, codebaseId: undefined },
+    initialFilters: { clientId: undefined, projectId: undefined, codebaseId: undefined },
     onError: (error) => handleListError(error, "Unable to fetch links."),
   });
 
@@ -243,15 +290,43 @@ export function DashboardApp({ user }: DashboardAppProps) {
 
   const [codebaseFormValues, setCodebaseFormValues] = useState(DEFAULT_CODEBASE_FORM_VALUES);
   const [codebaseErrors, setCodebaseErrors] = useState<FormErrorMap<(typeof CODEBASE_FIELDS)[number]>>({});
+  const [codebaseFormClientId, setCodebaseFormClientId] = useState("");
 
   const [linkFormValues, setLinkFormValues] = useState(DEFAULT_LINK_FORM_VALUES);
   const [linkErrors, setLinkErrors] = useState<FormErrorMap<(typeof LINK_FIELDS)[number]>>({});
+
+  const loadCbFormProjectDropdown = useCallback(async (clientId?: string) => {
+    clearCbFormPj();
+    if (clientId) {
+      await loadCbFormPj({ clientId });
+    } else {
+      await loadCbFormPj();
+    }
+  }, [clearCbFormPj, loadCbFormPj]);
+
+  const loadLinkFormProjectDropdown = useCallback(async (clientId?: string) => {
+    clearLinkFormPj();
+    if (!clientId) return;
+    await loadLinkFormPj({ clientId });
+  }, [clearLinkFormPj, loadLinkFormPj]);
 
   const loadLinkFormCodebaseDropdown = useCallback(async (projectId?: string) => {
     clearLinkFormCb();
     if (!projectId) return;
     await loadLinkFormCb({ projectId });
   }, [clearLinkFormCb, loadLinkFormCb]);
+
+  const loadCbFilterProjectDropdown = useCallback(async (clientId?: string) => {
+    clearCbFilterPj();
+    if (!clientId) return;
+    await loadCbFilterPj({ clientId });
+  }, [clearCbFilterPj, loadCbFilterPj]);
+
+  const loadLinkFilterProjectDropdown = useCallback(async (clientId?: string) => {
+    clearLinkFilterPj();
+    if (!clientId) return;
+    await loadLinkFilterPj({ clientId });
+  }, [clearLinkFilterPj, loadLinkFilterPj]);
 
   const loadLinkFilterCodebaseDropdown = useCallback(async (projectId?: string) => {
     clearLinkFilterCb();
@@ -386,6 +461,10 @@ export function DashboardApp({ user }: DashboardAppProps) {
       engagementType: client.engagementType,
       workingDaysPerWeek: client.workingDaysPerWeek,
       workingHoursPerDay: client.workingHoursPerDay,
+      email: client.email,
+      phone: client.phone,
+      whatsapp: client.whatsapp,
+      address: client.address,
       notes: client.notes,
     });
     setClientErrors({});
@@ -412,53 +491,63 @@ export function DashboardApp({ user }: DashboardAppProps) {
     setSheetState({ open: true, entity: "project", mode: "update", id: project.id });
   }, []);
 
-  const openCreateCodebaseSheet = useCallback(() => {
+  const openCreateCodebaseSheet = useCallback(async () => {
     setCodebaseFormValues({
       ...DEFAULT_CODEBASE_FORM_VALUES,
       projectId: codebases.filters.projectId ?? "",
     });
+    setCodebaseFormClientId("");
     setCodebaseErrors({});
     setSheetState({ open: true, entity: "codebase", mode: "create", id: null });
-  }, [codebases.filters.projectId]);
+    await loadCbFormProjectDropdown();
+  }, [codebases.filters.projectId, loadCbFormProjectDropdown]);
 
-  const openUpdateCodebaseSheet = useCallback((codebase: CodebaseItem) => {
+  const openUpdateCodebaseSheet = useCallback(async (codebase: CodebaseItem) => {
     setCodebaseFormValues({
       projectId: codebase.projectId,
       name: codebase.name,
-      type: codebase.type,
       description: codebase.description,
     });
+    setCodebaseFormClientId(codebase.clientId);
     setCodebaseErrors({});
     setSheetState({ open: true, entity: "codebase", mode: "update", id: codebase.id });
-  }, []);
+    await loadCbFormProjectDropdown(codebase.clientId);
+  }, [loadCbFormProjectDropdown]);
 
   const openCreateLinkSheet = useCallback(async () => {
+    const clientId = links.filters.clientId;
     const projectId = links.filters.projectId ?? "";
     setLinkFormValues({
       ...DEFAULT_LINK_FORM_VALUES,
+      clientId: clientId ?? null,
       projectId,
       codebaseId: links.filters.codebaseId ?? null,
     });
     setLinkErrors({});
     setSheetState({ open: true, entity: "link", mode: "create", id: null });
-    await loadLinkFormCodebaseDropdown(projectId);
-  }, [links.filters.codebaseId, links.filters.projectId, loadLinkFormCodebaseDropdown]);
+    await Promise.all([
+      loadLinkFormProjectDropdown(clientId),
+      loadLinkFormCodebaseDropdown(projectId),
+    ]);
+  }, [links.filters.clientId, links.filters.codebaseId, links.filters.projectId, loadLinkFormProjectDropdown, loadLinkFormCodebaseDropdown]);
 
   const openUpdateLinkSheet = useCallback(
     async (link: LinkItem) => {
       setLinkFormValues({
-        projectId: link.projectId,
+        clientId: link.clientId,
+        projectId: link.projectId ?? "",
         codebaseId: link.codebaseId,
         title: link.title,
         url: link.url,
-        category: link.category,
-        notes: link.notes,
       });
       setLinkErrors({});
       setSheetState({ open: true, entity: "link", mode: "update", id: link.id });
-      await loadLinkFormCodebaseDropdown(link.projectId);
+      await Promise.all([
+        loadLinkFormProjectDropdown(link.clientId ?? undefined),
+        loadLinkFormCodebaseDropdown(link.projectId ?? undefined),
+      ]);
     },
-    [loadLinkFormCodebaseDropdown],
+    [loadLinkFormProjectDropdown, loadLinkFormCodebaseDropdown],
   );
 
   // --- Delete confirm ---
@@ -545,6 +634,10 @@ export function DashboardApp({ user }: DashboardAppProps) {
 
   const submitCodebaseForm = useCallback(async () => {
     if (isSheetSubmitting) return;
+    if (!codebaseFormClientId) {
+      setCodebaseErrors({ form: "Please select a client first." });
+      return;
+    }
     const parsed = codebasePayloadSchema.safeParse(codebaseFormValues);
     if (!parsed.success) {
       setCodebaseErrors(toValidationErrors(CODEBASE_FIELDS, parsed.error));
@@ -656,12 +749,18 @@ export function DashboardApp({ user }: DashboardAppProps) {
       setCodebaseFormValues,
       codebaseErrors,
       setCodebaseErrors,
-      openCreateCodebaseSheet,
-      openUpdateCodebaseSheet,
+      codebaseFormClientId,
+      setCodebaseFormClientId,
+      codebaseFormProjectOptions,
+      loadCbFormProjectDropdown,
+      openCreateCodebaseSheet: () => { void openCreateCodebaseSheet(); },
+      openUpdateCodebaseSheet: (codebase: CodebaseItem) => { void openUpdateCodebaseSheet(codebase); },
       linkFormValues,
       setLinkFormValues,
       linkErrors,
       setLinkErrors,
+      linkFormProjectOptions,
+      loadLinkFormProjectDropdown,
       linkFormCodebaseOptions,
       loadLinkFormCodebaseDropdown,
       openCreateLinkSheet: () => { void openCreateLinkSheet(); },
@@ -669,6 +768,10 @@ export function DashboardApp({ user }: DashboardAppProps) {
       clientOptions,
       projectOptions,
       codebaseOptions,
+      cbFilterProjectOptions,
+      loadCbFilterProjectDropdown,
+      linkFilterProjectOptions,
+      loadLinkFilterProjectDropdown,
       linkFilterCodebaseOptions,
       loadLinkFilterCodebaseDropdown,
     }),
@@ -678,10 +781,13 @@ export function DashboardApp({ user }: DashboardAppProps) {
       deleteState, isDeleting, openDeleteDialog, closeDeleteDialog, handleDeleteConfirm,
       clientFormValues, clientErrors, openCreateClientSheet, openUpdateClientSheet,
       projectFormValues, projectErrors, openCreateProjectSheet, openUpdateProjectSheet,
-      codebaseFormValues, codebaseErrors, openCreateCodebaseSheet, openUpdateCodebaseSheet,
-      linkFormValues, linkErrors, linkFormCodebaseOptions, loadLinkFormCodebaseDropdown,
+      codebaseFormValues, codebaseErrors, codebaseFormClientId, codebaseFormProjectOptions, loadCbFormProjectDropdown,
+      openCreateCodebaseSheet, openUpdateCodebaseSheet,
+      linkFormValues, linkErrors, linkFormProjectOptions, loadLinkFormProjectDropdown, linkFormCodebaseOptions, loadLinkFormCodebaseDropdown,
       openCreateLinkSheet, openUpdateLinkSheet,
       clientOptions, projectOptions, codebaseOptions,
+      cbFilterProjectOptions, loadCbFilterProjectDropdown,
+      linkFilterProjectOptions, loadLinkFilterProjectDropdown,
       linkFilterCodebaseOptions, loadLinkFilterCodebaseDropdown,
     ],
   );
@@ -689,7 +795,7 @@ export function DashboardApp({ user }: DashboardAppProps) {
   return (
     <DashboardContext.Provider value={contextValue}>
       <SidebarProvider>
-        <AppSidebar user={user} />
+        <AppSidebar />
         <SidebarInset>
           <DashboardHeader />
           <NetworkActivityIndicator />
@@ -775,6 +881,48 @@ export function DashboardApp({ user }: DashboardAppProps) {
                 </div>
               </div>
               <div className="space-y-2">
+                <label htmlFor="client-email" className="text-sm font-medium">Email</label>
+                <Input id="client-email" type="email" value={clientFormValues.email ?? ""}
+                  onChange={(e) => {
+                    setClientFormValues((p) => ({ ...p, email: toNullableText(e.target.value) }));
+                    setClientErrors((p) => ({ ...p, email: undefined, form: undefined }));
+                  }}
+                />
+                <FormErrorText message={clientErrors.email} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="client-phone" className="text-sm font-medium">Phone</label>
+                  <Input id="client-phone" value={clientFormValues.phone ?? ""}
+                    onChange={(e) => {
+                      setClientFormValues((p) => ({ ...p, phone: toNullableText(e.target.value) }));
+                      setClientErrors((p) => ({ ...p, phone: undefined, form: undefined }));
+                    }}
+                  />
+                  <FormErrorText message={clientErrors.phone} />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="client-whatsapp" className="text-sm font-medium">WhatsApp</label>
+                  <Input id="client-whatsapp" value={clientFormValues.whatsapp ?? ""}
+                    onChange={(e) => {
+                      setClientFormValues((p) => ({ ...p, whatsapp: toNullableText(e.target.value) }));
+                      setClientErrors((p) => ({ ...p, whatsapp: undefined, form: undefined }));
+                    }}
+                  />
+                  <FormErrorText message={clientErrors.whatsapp} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="client-address" className="text-sm font-medium">Address</label>
+                <Textarea id="client-address" rows={2} value={clientFormValues.address ?? ""}
+                  onChange={(e) => {
+                    setClientFormValues((p) => ({ ...p, address: toNullableText(e.target.value) }));
+                    setClientErrors((p) => ({ ...p, address: undefined, form: undefined }));
+                  }}
+                />
+                <FormErrorText message={clientErrors.address} />
+              </div>
+              <div className="space-y-2">
                 <label htmlFor="client-notes" className="text-sm font-medium">Notes</label>
                 <Textarea id="client-notes" rows={4} value={clientFormValues.notes ?? ""}
                   onChange={(e) => {
@@ -784,6 +932,28 @@ export function DashboardApp({ user }: DashboardAppProps) {
                 />
                 <FormErrorText message={clientErrors.notes} />
               </div>
+              {sheetState.mode === "update" ? (
+                <div className="space-y-2 border-t pt-4">
+                  <label className="text-sm font-medium">Files</label>
+                  <FileUploadInput
+                    accept=".pdf,.doc,.docx"
+                    isUploading={clientFileUpload.isUploading}
+                    onFileSelect={(file) => {
+                      void clientFileUpload.upload(file);
+                    }}
+                    disabled={isSheetSubmitting}
+                  />
+                  <FileList
+                    files={clientFileUpload.files}
+                    isLoading={clientFileUpload.isLoading}
+                    onDelete={clientFileUpload.remove}
+                    onDownload={(id, name) => {
+                      void downloadFile(id, name);
+                    }}
+                    onView={viewFile}
+                  />
+                </div>
+              ) : null}
               {clientErrors.form ? (
                 <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{clientErrors.form}</p>
               ) : null}
@@ -844,15 +1014,36 @@ export function DashboardApp({ user }: DashboardAppProps) {
           {sheetState.entity === "codebase" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="codebase-project" className="text-sm font-medium">Project</label>
-                <Select value={codebaseFormValues.projectId || "__none"} onValueChange={(v) => {
-                  setCodebaseFormValues((p) => ({ ...p, projectId: v === "__none" ? "" : v }));
+                <label htmlFor="codebase-client" className="text-sm font-medium">Client</label>
+                <Select value={codebaseFormClientId || "__none"} onValueChange={(v) => {
+                  const clientId = v === "__none" ? "" : v;
+                  setCodebaseFormClientId(clientId);
+                  setCodebaseFormValues((p) => ({ ...p, projectId: "" }));
                   setCodebaseErrors((p) => ({ ...p, projectId: undefined, form: undefined }));
+                  void loadCbFormProjectDropdown(clientId || undefined);
                 }}>
+                  <SelectTrigger id="codebase-client" className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Select client</SelectItem>
+                    {clientOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <FormErrorText message={codebaseErrors.form} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="codebase-project" className="text-sm font-medium">Project</label>
+                <Select
+                  value={codebaseFormValues.projectId || "__none"}
+                  onValueChange={(v) => {
+                    setCodebaseFormValues((p) => ({ ...p, projectId: v === "__none" ? "" : v }));
+                    setCodebaseErrors((p) => ({ ...p, projectId: undefined, form: undefined }));
+                  }}
+                  disabled={!codebaseFormClientId}
+                >
                   <SelectTrigger id="codebase-project" className="w-full"><SelectValue placeholder="Select project" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">Select project</SelectItem>
-                    {projectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {codebaseFormProjectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={codebaseErrors.projectId} />
@@ -866,19 +1057,6 @@ export function DashboardApp({ user }: DashboardAppProps) {
                 <FormErrorText message={codebaseErrors.name} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="codebase-type" className="text-sm font-medium">Type</label>
-                <Select value={codebaseFormValues.type} onValueChange={(v) => {
-                  setCodebaseFormValues((p) => ({ ...p, type: v as CodebaseItem["type"] }));
-                  setCodebaseErrors((p) => ({ ...p, type: undefined, form: undefined }));
-                }}>
-                  <SelectTrigger id="codebase-type" className="w-full"><SelectValue placeholder="Select type" /></SelectTrigger>
-                  <SelectContent>
-                    {CODEBASE_TYPE_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <FormErrorText message={codebaseErrors.type} />
-              </div>
-              <div className="space-y-2">
                 <label htmlFor="codebase-description" className="text-sm font-medium">Description</label>
                 <Textarea id="codebase-description" rows={4} value={codebaseFormValues.description ?? ""} onChange={(e) => {
                   setCodebaseFormValues((p) => ({ ...p, description: toNullableText(e.target.value) }));
@@ -886,26 +1064,40 @@ export function DashboardApp({ user }: DashboardAppProps) {
                 }} />
                 <FormErrorText message={codebaseErrors.description} />
               </div>
-              {codebaseErrors.form ? (
-                <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{codebaseErrors.form}</p>
-              ) : null}
             </div>
           ) : null}
 
           {sheetState.entity === "link" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="link-project" className="text-sm font-medium">Project</label>
+                <label htmlFor="link-client" className="text-sm font-medium">Client</label>
+                <Select value={linkFormValues.clientId ?? "__none"} onValueChange={(v) => {
+                  const clientId = v === "__none" ? null : v;
+                  setLinkFormValues((p) => ({ ...p, clientId, projectId: "", codebaseId: null }));
+                  setLinkErrors((p) => ({ ...p, clientId: undefined, projectId: undefined, codebaseId: undefined, form: undefined }));
+                  void loadLinkFormProjectDropdown(clientId ?? undefined);
+                  clearLinkFormCb();
+                }}>
+                  <SelectTrigger id="link-client" className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No client</SelectItem>
+                    {clientOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <FormErrorText message={linkErrors.clientId} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="link-project" className="text-sm font-medium">Project (optional)</label>
                 <Select value={linkFormValues.projectId || "__none"} onValueChange={(v) => {
                   const projectId = v === "__none" ? "" : v;
                   setLinkFormValues((p) => ({ ...p, projectId, codebaseId: null }));
                   setLinkErrors((p) => ({ ...p, projectId: undefined, codebaseId: undefined, form: undefined }));
                   void loadLinkFormCodebaseDropdown(projectId);
-                }}>
+                }} disabled={!linkFormValues.clientId}>
                   <SelectTrigger id="link-project" className="w-full"><SelectValue placeholder="Select project" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">Select project</SelectItem>
-                    {projectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    <SelectItem value="__none">No project</SelectItem>
+                    {linkFormProjectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={linkErrors.projectId} />
@@ -915,7 +1107,7 @@ export function DashboardApp({ user }: DashboardAppProps) {
                 <Select value={linkFormValues.codebaseId ?? "__none"} onValueChange={(v) => {
                   setLinkFormValues((p) => ({ ...p, codebaseId: v === "__none" ? null : v }));
                   setLinkErrors((p) => ({ ...p, codebaseId: undefined, form: undefined }));
-                }}>
+                }} disabled={!linkFormValues.projectId}>
                   <SelectTrigger id="link-codebase" className="w-full"><SelectValue placeholder="Select codebase" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">No codebase</SelectItem>
@@ -939,27 +1131,6 @@ export function DashboardApp({ user }: DashboardAppProps) {
                   setLinkErrors((p) => ({ ...p, url: undefined, form: undefined }));
                 }} />
                 <FormErrorText message={linkErrors.url} />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="link-category" className="text-sm font-medium">Category</label>
-                <Select value={linkFormValues.category} onValueChange={(v) => {
-                  setLinkFormValues((p) => ({ ...p, category: v as LinkItem["category"] }));
-                  setLinkErrors((p) => ({ ...p, category: undefined, form: undefined }));
-                }}>
-                  <SelectTrigger id="link-category" className="w-full"><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {LINK_CATEGORY_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <FormErrorText message={linkErrors.category} />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="link-notes" className="text-sm font-medium">Notes</label>
-                <Textarea id="link-notes" rows={4} value={linkFormValues.notes ?? ""} onChange={(e) => {
-                  setLinkFormValues((p) => ({ ...p, notes: toNullableText(e.target.value) }));
-                  setLinkErrors((p) => ({ ...p, notes: undefined, form: undefined }));
-                }} />
-                <FormErrorText message={linkErrors.notes} />
               </div>
               {linkErrors.form ? (
                 <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{linkErrors.form}</p>

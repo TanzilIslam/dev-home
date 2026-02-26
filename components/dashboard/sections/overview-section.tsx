@@ -12,9 +12,6 @@ import {
 import {
   Bar,
   BarChart,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -32,8 +29,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { http } from "@/lib/http";
 import {
   PROJECT_STATUS_OPTIONS,
-  CODEBASE_TYPE_OPTIONS,
-  LINK_CATEGORY_CHART_LABELS,
   getLabelByValue,
 } from "@/lib/constants/domain";
 import type { DashboardStats } from "@/types/stats";
@@ -55,7 +50,7 @@ export function OverviewSection() {
     async function fetchStats() {
       try {
         const { data } = await http.get<ApiResponse<DashboardStats>>(
-          "/api/stats",
+          "/stats",
         );
         if (data.success) {
           setStats(data.data);
@@ -86,16 +81,6 @@ export function OverviewSection() {
 
   const statusData = stats.projectsByStatus.map((g) => ({
     name: getLabelByValue(PROJECT_STATUS_OPTIONS, g.name),
-    count: g.count,
-  }));
-
-  const typeData = stats.codebasesByType.map((g) => ({
-    name: getLabelByValue(CODEBASE_TYPE_OPTIONS, g.name),
-    count: g.count,
-  }));
-
-  const categoryData = stats.linksByCategory.map((g) => ({
-    name: LINK_CATEGORY_CHART_LABELS[g.name] ?? g.name,
     count: g.count,
   }));
 
@@ -151,7 +136,7 @@ export function OverviewSection() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Project Status</CardTitle>
@@ -169,63 +154,6 @@ export function OverviewSection() {
               </ResponsiveContainer>
             ) : (
               <p className="text-muted-foreground text-sm">No project data.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Codebase Types</CardTitle>
-            <CardDescription>Codebases grouped by type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {typeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={typeData}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label
-                  >
-                    {typeData.map((_, index) => (
-                      <Cell
-                        key={index}
-                        fill={CHART_COLORS[index % CHART_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No codebase data.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Link Categories</CardTitle>
-            <CardDescription>Links grouped by category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={categoryData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill={CHART_COLORS[0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-muted-foreground text-sm">No link data.</p>
             )}
           </CardContent>
         </Card>
@@ -255,7 +183,11 @@ export function OverviewSection() {
                       {link.title}
                       <ExternalLink className="ml-1 inline size-3" />
                     </a>
-                    <Badge variant="secondary">{link.projectName}</Badge>
+                    {link.projectName ? (
+                      <Badge variant="secondary">{link.projectName}</Badge>
+                    ) : link.clientName ? (
+                      <Badge variant="outline">{link.clientName}</Badge>
+                    ) : null}
                   </div>
                   <span className="text-muted-foreground text-xs">
                     {new Date(link.updatedAt).toLocaleDateString()}

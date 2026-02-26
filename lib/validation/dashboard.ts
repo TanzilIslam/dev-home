@@ -81,6 +81,10 @@ export const clientPayloadSchema = z
       "Working hours must be at least 1.",
       "Working hours cannot be more than 24.",
     ),
+    email: nullableText(254, "Email is too long."),
+    phone: nullableText(50, "Phone number is too long."),
+    whatsapp: nullableText(50, "WhatsApp number is too long."),
+    address: nullableText(500, "Address is too long."),
     notes: nullableText(1000, "Notes are too long."),
   })
   .superRefine((value, context) => {
@@ -127,38 +131,46 @@ export const projectPayloadSchema = z.object({
 export const codebasePayloadSchema = z.object({
   projectId: idSchema,
   name: z.string().trim().min(1, "Codebase name is required.").max(120, "Codebase name is too long."),
-  type: z.enum(["WEB", "API", "MOBILE_ANDROID", "MOBILE_IOS", "DESKTOP", "INFRA", "OTHER"]),
   description: nullableText(1000, "Description is too long."),
 });
 
-export const linkPayloadSchema = z.object({
-  projectId: idSchema,
-  codebaseId: optionalIdSchema.nullable().transform((value) => value ?? null),
-  title: z.string().trim().min(1, "Link title is required.").max(160, "Link title is too long."),
-  url: z
-    .string()
-    .trim()
-    .min(1, "Link URL is required.")
-    .url("Enter a valid URL including http:// or https://.")
-    .refine((value) => {
-      try {
-        const parsed = new URL(value);
-        return parsed.protocol === "http:" || parsed.protocol === "https:";
-      } catch {
-        return false;
-      }
-    }, "Only http:// or https:// URLs are allowed."),
-  category: z.enum([
-    "REPOSITORY",
-    "SERVER",
-    "COMMUNICATION",
-    "DOCUMENTATION",
-    "DESIGN",
-    "TRACKING",
-    "OTHER",
-  ]),
-  notes: nullableText(1000, "Notes are too long."),
-});
+export const linkPayloadSchema = z
+  .object({
+    clientId: optionalIdSchema.nullable().transform((value) => value ?? null),
+    projectId: optionalIdSchema.nullable().transform((value) => value ?? null),
+    codebaseId: optionalIdSchema.nullable().transform((value) => value ?? null),
+    title: z.string().trim().min(1, "Link title is required.").max(160, "Link title is too long."),
+    url: z
+      .string()
+      .trim()
+      .min(1, "Link URL is required.")
+      .url("Enter a valid URL including http:// or https://.")
+      .refine((value) => {
+        try {
+          const parsed = new URL(value);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }, "Only http:// or https:// URLs are allowed."),
+  })
+  .superRefine((value, context) => {
+    if (!value.clientId && !value.projectId) {
+      context.addIssue({
+        code: "custom",
+        path: ["projectId"],
+        message: "A link must belong to either a client or a project.",
+      });
+    }
+
+    if (value.codebaseId && !value.projectId) {
+      context.addIssue({
+        code: "custom",
+        path: ["codebaseId"],
+        message: "A codebase requires a project to be selected.",
+      });
+    }
+  });
 
 export const resourceIdParamsSchema = z.object({
   id: idSchema,
@@ -169,10 +181,18 @@ export const projectListFiltersSchema = z.object({
 });
 
 export const codebaseListFiltersSchema = z.object({
+  clientId: optionalIdSchema,
   projectId: optionalIdSchema,
 });
 
 export const linkListFiltersSchema = z.object({
+  clientId: optionalIdSchema,
+  projectId: optionalIdSchema,
+  codebaseId: optionalIdSchema,
+});
+
+export const fileListFiltersSchema = z.object({
+  clientId: optionalIdSchema,
   projectId: optionalIdSchema,
   codebaseId: optionalIdSchema,
 });

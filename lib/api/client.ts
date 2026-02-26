@@ -8,6 +8,9 @@ import type {
   CodebaseListQueryParams,
   CodebasePayload,
   DropdownListData,
+  FileItem,
+  FileListData,
+  FileListQueryParams,
   LinkItem,
   LinkListData,
   LinkListQueryParams,
@@ -109,14 +112,14 @@ async function requestApi<TData>(config: {
 async function listResource<TData>(resource: string, params?: object) {
   const query = toQueryString(params);
   return requestApi<TData>({
-    url: `/api/${resource}${query}`,
+    url: `/${resource}${query}`,
     method: "get",
   });
 }
 
 async function createResource<TPayload, TData>(resource: string, payload: TPayload) {
   return requestApi<TData>({
-    url: `/api/${resource}`,
+    url: `/${resource}`,
     method: "post",
     data: payload,
   });
@@ -124,7 +127,7 @@ async function createResource<TPayload, TData>(resource: string, payload: TPaylo
 
 async function updateResource<TPayload, TData>(resource: string, id: string, payload: TPayload) {
   return requestApi<TData>({
-    url: `/api/${resource}/${id}`,
+    url: `/${resource}/${id}`,
     method: "put",
     data: payload,
   });
@@ -132,7 +135,7 @@ async function updateResource<TPayload, TData>(resource: string, id: string, pay
 
 async function deleteResource(resource: string, id: string) {
   return requestApi<null>({
-    url: `/api/${resource}/${id}`,
+    url: `/${resource}/${id}`,
     method: "delete",
   });
 }
@@ -222,9 +225,55 @@ export function deleteLink(id: string) {
   return deleteResource("links", id);
 }
 
+export async function uploadFile(params: {
+  file: File;
+  clientId?: string | null;
+  projectId?: string | null;
+  codebaseId?: string | null;
+  maxSize?: number;
+  allowedMimeTypes?: string[];
+}): Promise<FileItem> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+
+  if (params.clientId) formData.append("clientId", params.clientId);
+  if (params.projectId) formData.append("projectId", params.projectId);
+  if (params.codebaseId) formData.append("codebaseId", params.codebaseId);
+  if (params.maxSize) formData.append("maxSize", String(params.maxSize));
+  if (params.allowedMimeTypes?.length) {
+    formData.append("allowedMimeTypes", params.allowedMimeTypes.join(","));
+  }
+
+  try {
+    const response = await http.post<ApiResponse<FileItem>>("/files", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    const payload = response.data;
+    if (!payload.success) {
+      throw new ApiRequestError(payload.message, {
+        statusCode: response.status,
+        fieldErrors: payload.errors,
+      });
+    }
+
+    return payload.data;
+  } catch (error) {
+    throw extractApiError(error);
+  }
+}
+
+export function listFiles(params?: FileListQueryParams) {
+  return listResource<FileListData>("files", params);
+}
+
+export function deleteFileRecord(id: string) {
+  return deleteResource("files", id);
+}
+
 export function updateProfile(payload: { name: string }) {
   return requestApi<{ id: string; email: string; name: string }>({
-    url: "/api/auth/profile",
+    url: "/auth/profile",
     method: "put",
     data: payload,
   });
@@ -232,7 +281,7 @@ export function updateProfile(payload: { name: string }) {
 
 export function changePassword(payload: { currentPassword: string; newPassword: string; confirmPassword: string }) {
   return requestApi<null>({
-    url: "/api/auth/password",
+    url: "/auth/password",
     method: "put",
     data: payload,
   });

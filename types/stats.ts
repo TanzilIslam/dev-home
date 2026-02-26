@@ -7,9 +7,9 @@ export type RecentLink = {
   id: string;
   title: string;
   url: string;
-  projectName: string;
+  clientName: string | null;
+  projectName: string | null;
   codebaseName: string | null;
-  category: string;
   updatedAt: string;
 };
 
@@ -19,7 +19,5 @@ export type DashboardStats = {
   totalCodebases: number;
   totalLinks: number;
   projectsByStatus: GroupCount[];
-  codebasesByType: GroupCount[];
-  linksByCategory: GroupCount[];
   recentLinks: RecentLink[];
 };

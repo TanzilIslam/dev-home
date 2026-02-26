@@ -4,6 +4,7 @@ import { withAuth, parseBody, parseRouteId } from "@/lib/api/route-helpers";
 import { LINK_SELECT } from "@/lib/api/prisma-selects";
 import { LINK_MSG } from "@/lib/api/messages";
 import {
+  requireClient,
   requireProject,
   requireCodebaseForProject,
 } from "@/lib/api/ownership";
@@ -42,27 +43,33 @@ export const PUT = withAuth(async (userId, request, context) => {
   if (!result.success) return result.response;
 
   try {
-    const projectError = await requireProject(userId, result.data.projectId);
-    if (projectError) return projectError;
+    if (result.data.clientId) {
+      const clientError = await requireClient(userId, result.data.clientId);
+      if (clientError) return clientError;
+    }
 
-    if (result.data.codebaseId) {
-      const codebaseError = await requireCodebaseForProject(
-        userId,
-        result.data.codebaseId,
-        result.data.projectId,
-      );
-      if (codebaseError) return codebaseError;
+    if (result.data.projectId) {
+      const projectError = await requireProject(userId, result.data.projectId);
+      if (projectError) return projectError;
+
+      if (result.data.codebaseId) {
+        const codebaseError = await requireCodebaseForProject(
+          userId,
+          result.data.codebaseId,
+          result.data.projectId,
+        );
+        if (codebaseError) return codebaseError;
+      }
     }
 
     const updateResult = await prisma.link.updateMany({
       where: { id, userId },
       data: {
+        clientId: result.data.clientId,
         projectId: result.data.projectId,
         codebaseId: result.data.codebaseId,
         title: result.data.title,
         url: result.data.url,
-        category: result.data.category,
-        notes: result.data.notes,
       },
     });
 

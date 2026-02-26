@@ -6,14 +6,11 @@ import {
   FolderKanban,
   Code,
   Link,
-  Settings,
 } from "lucide-react";
 import { useAppStore, type DashboardSection } from "@/store/use-app-store";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -22,9 +19,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+
 
 const NAV_ITEMS: {
   label: string;
@@ -36,17 +33,19 @@ const NAV_ITEMS: {
   { label: "Projects", icon: FolderKanban, section: "projects" },
   { label: "Codebases", icon: Code, section: "codebases" },
   { label: "Links", icon: Link, section: "links" },
-  { label: "Settings", icon: Settings, section: "settings" },
 ];
 
-type AppSidebarProps = {
-  user: { email: string; name: string | null };
-};
-
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar() {
   const activeSection = useAppStore((state) => state.activeSection);
   const setActiveSection = useAppStore((state) => state.setActiveSection);
   const { isMobile, setOpenMobile } = useSidebar();
+
+  function handleNav(section: DashboardSection) {
+    setActiveSection(section);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -66,14 +65,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.section}>
                   <SidebarMenuButton
+                    className="cursor-pointer"
                     isActive={activeSection === item.section}
                     tooltip={item.label}
-                    onClick={() => {
-                      setActiveSection(item.section);
-                      if (isMobile) {
-                        setOpenMobile(false);
-                      }
-                    }}
+                    onClick={() => handleNav(item.section)}
                   >
                     <item.icon />
                     <span>{item.label}</span>
@@ -84,17 +79,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarSeparator />
-
-      <SidebarFooter>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <span className="text-muted-foreground truncate text-xs group-data-[collapsible=icon]:hidden">
-            {user.email}
-          </span>
-        </div>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

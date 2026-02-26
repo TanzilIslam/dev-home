@@ -5,6 +5,7 @@ import { CLIENT_SELECT } from "@/lib/api/prisma-selects";
 import { CLIENT_MSG } from "@/lib/api/messages";
 import { mapClientItem } from "@/lib/domain/mappers";
 import { clientPayloadSchema } from "@/lib/validation/dashboard";
+import { deleteFileFromDisk } from "@/lib/upload/storage";
 
 export const GET = withAuth(async (userId, _, context) => {
   const id = await parseRouteId(context!);
@@ -45,6 +46,10 @@ export const PUT = withAuth(async (userId, request, context) => {
         engagementType: result.data.engagementType,
         workingDaysPerWeek: result.data.workingDaysPerWeek,
         workingHoursPerDay: result.data.workingHoursPerDay,
+        email: result.data.email,
+        phone: result.data.phone,
+        whatsapp: result.data.whatsapp,
+        address: result.data.address,
         notes: result.data.notes,
       },
     });
@@ -77,12 +82,21 @@ export const DELETE = withAuth(async (userId, _, context) => {
   }
 
   try {
+    const associatedFiles = await prisma.file.findMany({
+      where: { clientId: id, userId },
+      select: { storagePath: true },
+    });
+
     const result = await prisma.client.deleteMany({
       where: { id, userId },
     });
 
     if (result.count === 0) {
       return jsonError(CLIENT_MSG.notFound, 404);
+    }
+
+    for (const f of associatedFiles) {
+      await deleteFileFromDisk(f.storagePath).catch(() => {});
     }
 
     return jsonSuccess(null, {

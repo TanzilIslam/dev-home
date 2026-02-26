@@ -16,6 +16,7 @@ type FilterSelectProps = {
   placeholder: string;
   allLabel: string;
   triggerClassName?: string;
+  disabled?: boolean;
 };
 
 export function FilterSelect({
@@ -25,11 +26,13 @@ export function FilterSelect({
   placeholder,
   allLabel,
   triggerClassName = "w-full sm:w-[260px]",
+  disabled = false,
 }: FilterSelectProps) {
   return (
     <Select
       value={value ?? "__all"}
       onValueChange={(v) => onValueChange(v === "__all" ? undefined : v)}
+      disabled={disabled}
     >
       <SelectTrigger className={triggerClassName}>
         <SelectValue placeholder={placeholder} />

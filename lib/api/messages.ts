@@ -18,3 +18,4 @@ export const CLIENT_MSG = entityMessages("Client", "clients");
 export const PROJECT_MSG = entityMessages("Project", "projects");
 export const CODEBASE_MSG = entityMessages("Codebase", "codebases");
 export const LINK_MSG = entityMessages("Link", "links");
+export const FILE_MSG = entityMessages("File", "files");

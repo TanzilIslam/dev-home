@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -14,25 +13,20 @@ import { ResourcePagination } from "@/components/dashboard/resource-pagination";
 import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
 import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
-import { LINK_CATEGORY_OPTIONS, getLabelByValue } from "@/lib/constants/domain";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
 
 export function LinksSection() {
   const {
     links,
-    projectOptions,
-    codebaseOptions,
+    clientOptions,
+    linkFilterProjectOptions,
+    loadLinkFilterProjectDropdown,
     linkFilterCodebaseOptions,
     loadLinkFilterCodebaseDropdown,
     openCreateLinkSheet,
     openUpdateLinkSheet,
     openDeleteDialog,
   } = useDashboard();
-
-  const linkTableCodebaseOptions =
-    links.filters.projectId && linkFilterCodebaseOptions.length > 0
-      ? linkFilterCodebaseOptions
-      : codebaseOptions;
 
   return (
     <div className="space-y-4">
@@ -41,8 +35,6 @@ export function LinksSection() {
         description="Save custom links by project and optional codebase."
         searchValue={links.query}
         onSearchChange={links.setQuery}
-        pageSize={links.pageSize}
-        onPageSizeChange={links.setPageSize}
         onAdd={() => {
           void openCreateLinkSheet();
         }}
@@ -51,14 +43,26 @@ export function LinksSection() {
 
       <FilterBar className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <FilterSelect
+          value={links.filters.clientId}
+          onValueChange={(clientId) => {
+            links.setFilters({ clientId, projectId: undefined, codebaseId: undefined });
+            void loadLinkFilterProjectDropdown(clientId);
+          }}
+          options={clientOptions}
+          placeholder="Filter by client"
+          allLabel="All clients"
+          triggerClassName="w-full lg:w-[260px]"
+        />
+        <FilterSelect
           value={links.filters.projectId}
           onValueChange={(projectId) => {
-            links.setFilters({ projectId, codebaseId: undefined });
+            links.setFilters({ ...links.filters, projectId, codebaseId: undefined });
             void loadLinkFilterCodebaseDropdown(projectId);
           }}
-          options={projectOptions}
+          options={linkFilterProjectOptions}
           placeholder="Filter by project"
           allLabel="All projects"
+          disabled={!links.filters.clientId}
           triggerClassName="w-full lg:w-[260px]"
         />
         <FilterSelect
@@ -66,9 +70,10 @@ export function LinksSection() {
           onValueChange={(codebaseId) => {
             links.setFilters({ ...links.filters, codebaseId });
           }}
-          options={linkTableCodebaseOptions}
+          options={linkFilterCodebaseOptions}
           placeholder="Filter by codebase"
           allLabel="All codebases"
+          disabled={!links.filters.projectId}
           triggerClassName="w-full lg:w-[260px]"
         />
       </FilterBar>
@@ -78,10 +83,10 @@ export function LinksSection() {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead className="hidden md:table-cell">Project</TableHead>
-              <TableHead className="hidden lg:table-cell">Codebase</TableHead>
-              <TableHead className="hidden xl:table-cell">URL</TableHead>
-              <TableHead>Category</TableHead>
+              <TableHead className="hidden sm:table-cell">URL</TableHead>
+              <TableHead className="hidden md:table-cell">Client</TableHead>
+              <TableHead className="hidden lg:table-cell">Project</TableHead>
+              <TableHead className="hidden xl:table-cell">Codebase</TableHead>
               <TableHead className="w-[160px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -95,14 +100,8 @@ export function LinksSection() {
             ) : (
               links.items.map((link) => (
                 <TableRow key={link.id}>
-                  <TableCell className="font-medium">{link.title}</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {link.projectName}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {link.codebaseName ?? "-"}
-                  </TableCell>
-                  <TableCell className="hidden max-w-[280px] truncate xl:table-cell">
+                  <TableCell className="font-medium">{[link.projectName, link.codebaseName, link.title].filter(Boolean).join(" - ")}</TableCell>
+                  <TableCell className="hidden max-w-70 truncate sm:table-cell">
                     <a
                       href={link.url}
                       target="_blank"
@@ -113,10 +112,14 @@ export function LinksSection() {
                       {link.url}
                     </a>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {getLabelByValue(LINK_CATEGORY_OPTIONS, link.category)}
-                    </Badge>
+                  <TableCell className="hidden md:table-cell">
+                    {link.clientName ?? "-"}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {link.projectName ?? "-"}
+                  </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    {link.codebaseName ?? "-"}
                   </TableCell>
                   <TableCell>
                     <ResourceActions
@@ -133,7 +136,7 @@ export function LinksSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={links.meta} onPageChange={links.setPage} />
+      <ResourcePagination meta={links.meta} onPageChange={links.setPage} pageSize={links.pageSize} onPageSizeChange={links.setPageSize} />
     </div>
   );
 }

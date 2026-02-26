@@ -36,8 +36,6 @@ export function ProjectsSection() {
         description="Track projects under each client and monitor status."
         searchValue={projects.query}
         onSearchChange={projects.setQuery}
-        pageSize={projects.pageSize}
-        onPageSizeChange={projects.setPageSize}
         onAdd={openCreateProjectSheet}
         addLabel="Add Project"
       />
@@ -106,7 +104,7 @@ export function ProjectsSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={projects.meta} onPageChange={projects.setPage} />
+      <ResourcePagination meta={projects.meta} onPageChange={projects.setPage} pageSize={projects.pageSize} onPageSizeChange={projects.setPageSize} />
     </div>
   );
 }
