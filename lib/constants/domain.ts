@@ -29,3 +29,21 @@ export function getLabelByValue(
 
   return options.find((option) => option.value === value)?.label ?? value;
 }
+
+function isValidOption<T extends string>(options: Option<T>[], value: string): value is T {
+  return options.some((o) => o.value === value);
+}
+
+export function toEngagementType(value: string): EngagementType {
+  if (isValidOption(ENGAGEMENT_TYPE_OPTIONS, value)) return value;
+  return "TIME_BASED";
+}
+
+export function toProjectStatus(value: string): ProjectStatus {
+  if (isValidOption(PROJECT_STATUS_OPTIONS, value)) return value;
+  return "ACTIVE";
+}
+
+export function joinLabels(...parts: (string | null | undefined)[]): string {
+  return parts.filter(Boolean).join(" - ");
+}

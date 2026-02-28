@@ -34,6 +34,8 @@ import {
 import {
   ENGAGEMENT_TYPE_OPTIONS,
   PROJECT_STATUS_OPTIONS,
+  toEngagementType,
+  toProjectStatus,
 } from "@/lib/constants/domain";
 import {
   toNullableNumber,
@@ -836,7 +838,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                   onValueChange={(value) => {
                     setClientFormValues((p) => ({
                       ...p,
-                      engagementType: value as ClientItem["engagementType"],
+                      engagementType: toEngagementType(value),
                       workingDaysPerWeek: value === "TIME_BASED" ? p.workingDaysPerWeek ?? 5 : null,
                       workingHoursPerDay: value === "TIME_BASED" ? p.workingHoursPerDay ?? 8 : null,
                     }));
@@ -987,7 +989,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
               <div className="space-y-2">
                 <label htmlFor="project-status" className="text-sm font-medium">Status</label>
                 <Select value={projectFormValues.status} onValueChange={(v) => {
-                  setProjectFormValues((p) => ({ ...p, status: v as ProjectItem["status"] }));
+                  setProjectFormValues((p) => ({ ...p, status: toProjectStatus(v) }));
                   setProjectErrors((p) => ({ ...p, status: undefined, form: undefined }));
                 }}>
                   <SelectTrigger id="project-status" className="w-full"><SelectValue placeholder="Select status" /></SelectTrigger>

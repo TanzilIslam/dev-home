@@ -46,6 +46,19 @@ export function toValidationErrors<TFields extends string>(
   return mapped;
 }
 
+export function clearFieldError<TFields extends string>(
+  setErrors: (fn: (prev: FormErrorMap<TFields>) => FormErrorMap<TFields>) => void,
+  ...fields: TFields[]
+) {
+  setErrors((prev) => {
+    const next: FormErrorMap<TFields> = { ...prev, form: undefined };
+    for (const field of fields) {
+      delete next[field];
+    }
+    return next;
+  });
+}
+
 export function toNullableText(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;

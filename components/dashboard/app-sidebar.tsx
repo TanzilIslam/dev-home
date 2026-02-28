@@ -50,9 +50,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader>
-        <div className="flex h-8 items-center gap-2 px-2">
+        <div
+          className="flex h-8 cursor-pointer items-center gap-2 px-2"
+          onClick={() => handleNav("overview")}
+        >
           <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            dev-home
+            Dev Home
+          </span>
+          <span className="text-lg font-semibold hidden group-data-[collapsible=icon]:inline">
+            DH
           </span>
         </div>
       </SidebarHeader>

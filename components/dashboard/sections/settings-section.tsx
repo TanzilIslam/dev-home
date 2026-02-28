@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { updateProfile, changePassword } from "@/lib/api/client";
 import { profileSchema, changePasswordSchema } from "@/lib/auth/validation";
 import { showRequestError } from "@/lib/form-error-handler";
-import { toValidationErrors, type FormErrorMap } from "@/lib/form-utils";
+import { clearFieldError, toValidationErrors, type FormErrorMap } from "@/lib/form-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,7 +126,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  setProfileErrors((prev) => ({ ...prev, name: undefined, form: undefined }));
+                  clearFieldError(setProfileErrors, "name");
                 }}
                 disabled={isProfileSubmitting}
                 aria-invalid={profileErrors.name ? true : undefined}
@@ -171,7 +171,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                 value={currentPassword}
                 onChange={(e) => {
                   setCurrentPassword(e.target.value);
-                  setPasswordErrors((prev) => ({ ...prev, currentPassword: undefined, form: undefined }));
+                  clearFieldError(setPasswordErrors, "currentPassword");
                 }}
                 disabled={isPasswordSubmitting}
                 aria-invalid={passwordErrors.currentPassword ? true : undefined}
@@ -189,7 +189,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
-                  setPasswordErrors((prev) => ({ ...prev, newPassword: undefined, form: undefined }));
+                  clearFieldError(setPasswordErrors, "newPassword");
                 }}
                 disabled={isPasswordSubmitting}
                 aria-invalid={passwordErrors.newPassword ? true : undefined}
@@ -207,7 +207,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
-                  setPasswordErrors((prev) => ({ ...prev, confirmPassword: undefined, form: undefined }));
+                  clearFieldError(setPasswordErrors, "confirmPassword");
                 }}
                 disabled={isPasswordSubmitting}
                 aria-invalid={passwordErrors.confirmPassword ? true : undefined}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 } from "@/lib/constants/domain";
 import { listFiles, listProjects } from "@/lib/api/client";
 import { viewFile } from "@/lib/upload/download";
+import { useCancellableFetch } from "@/hooks/use-cancellable-fetch";
 import { FileList } from "@/components/dashboard/file-list";
 import type { FileItem, ProjectItem } from "@/types/domain";
 
@@ -41,64 +42,25 @@ export function ClientsSection() {
   const expandedClientName = useAppStore((s) => s.expandedClientName);
   const setExpandedClient = useAppStore((s) => s.setExpandedClient);
 
-  const [expandedProjects, setExpandedProjects] = useState<ProjectItem[]>([]);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
-  const [expandedFiles, setExpandedFiles] = useState<FileItem[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const fetchProjects = useCallback(
+    (clientId: string) => listProjects({ clientId, all: true }).then((d) => d?.items ?? []),
+    [],
+  );
+  const fetchFiles = useCallback(
+    (clientId: string) => listFiles({ clientId, all: true }).then((d) => d?.items ?? []),
+    [],
+  );
 
-  useEffect(() => {
-    if (!expandedClientId) return;
-
-    let cancelled = false;
-
-    listProjects({ clientId: expandedClientId, all: true })
-      .then((data) => {
-        if (!cancelled) {
-          setExpandedProjects(data?.items ?? []);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setExpandedProjects([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingProjects(false);
-        }
-      });
-
-    listFiles({ clientId: expandedClientId, all: true })
-      .then((data) => {
-        if (!cancelled) {
-          setExpandedFiles(data?.items ?? []);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setExpandedFiles([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingFiles(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [expandedClientId]);
+  const { data: expandedProjects, isLoading: isLoadingProjects } =
+    useCancellableFetch<ProjectItem[]>(expandedClientId, fetchProjects);
+  const { data: expandedFiles, isLoading: isLoadingFiles } =
+    useCancellableFetch<FileItem[]>(expandedClientId, fetchFiles);
 
   function toggleExpand(clientId: string, clientName: string) {
     if (expandedClientId === clientId) {
       setExpandedClient(null, null);
-      setExpandedProjects([]);
-      setExpandedFiles([]);
     } else {
       setExpandedClient(clientId, clientName);
-      setIsLoadingProjects(true);
-      setIsLoadingFiles(true);
     }
   }
 
@@ -145,8 +107,8 @@ export function ClientsSection() {
                     isExpanded={isExpanded}
                     totalColumns={totalColumns}
                     isLoadingProjects={isLoadingProjects}
-                    expandedProjects={expandedProjects}
-                    expandedFiles={expandedFiles}
+                    expandedProjects={expandedProjects ?? []}
+                    expandedFiles={expandedFiles ?? []}
                     isLoadingFiles={isLoadingFiles}
                     expandedClientName={expandedClientName}
                     onToggleExpand={() => toggleExpand(client.id, client.name)}
@@ -170,6 +132,15 @@ export function ClientsSection() {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{value ?? "None"}</dd>
+    </div>
+  );
+}
 
 type ClientRowGroupProps = {
   client: {
@@ -286,26 +257,11 @@ function ClientRowGroup({
                         : "Not set"}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-muted-foreground">Email</dt>
-                    <dd>{client.email ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Phone</dt>
-                    <dd>{client.phone ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">WhatsApp</dt>
-                    <dd>{client.whatsapp ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Address</dt>
-                    <dd>{client.address ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Notes</dt>
-                    <dd>{client.notes ?? "None"}</dd>
-                  </div>
+                  <DetailItem label="Email" value={client.email} />
+                  <DetailItem label="Phone" value={client.phone} />
+                  <DetailItem label="WhatsApp" value={client.whatsapp} />
+                  <DetailItem label="Address" value={client.address} />
+                  <DetailItem label="Notes" value={client.notes} />
                 </dl>
               </div>
 

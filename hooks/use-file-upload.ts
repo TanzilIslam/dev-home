@@ -65,6 +65,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
     } catch {
       if (mountedRef.current) {
         setFiles([]);
+        toast.error("Unable to load files right now.");
       }
     } finally {
       if (mountedRef.current) {

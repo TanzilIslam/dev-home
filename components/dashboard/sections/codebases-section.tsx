@@ -42,7 +42,7 @@ export function CodebasesSection() {
           value={codebases.filters.clientId}
           onValueChange={(clientId) => {
             codebases.setFilters({ clientId, projectId: undefined });
-            void loadCbFilterProjectDropdown(clientId);
+            loadCbFilterProjectDropdown(clientId).catch(() => {});
           }}
           options={clientOptions}
           placeholder="Filter by client"

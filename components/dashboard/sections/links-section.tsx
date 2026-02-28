@@ -14,6 +14,7 @@ import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
 import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
+import { joinLabels } from "@/lib/constants/domain";
 
 export function LinksSection() {
   const {
@@ -35,9 +36,7 @@ export function LinksSection() {
         description="Save custom links by project and optional codebase."
         searchValue={links.query}
         onSearchChange={links.setQuery}
-        onAdd={() => {
-          void openCreateLinkSheet();
-        }}
+        onAdd={openCreateLinkSheet}
         addLabel="Add Link"
       />
 
@@ -46,7 +45,7 @@ export function LinksSection() {
           value={links.filters.clientId}
           onValueChange={(clientId) => {
             links.setFilters({ clientId, projectId: undefined, codebaseId: undefined });
-            void loadLinkFilterProjectDropdown(clientId);
+            loadLinkFilterProjectDropdown(clientId).catch(() => {});
           }}
           options={clientOptions}
           placeholder="Filter by client"
@@ -57,7 +56,7 @@ export function LinksSection() {
           value={links.filters.projectId}
           onValueChange={(projectId) => {
             links.setFilters({ ...links.filters, projectId, codebaseId: undefined });
-            void loadLinkFilterCodebaseDropdown(projectId);
+            loadLinkFilterCodebaseDropdown(projectId).catch(() => {});
           }}
           options={linkFilterProjectOptions}
           placeholder="Filter by project"
@@ -100,7 +99,7 @@ export function LinksSection() {
             ) : (
               links.items.map((link) => (
                 <TableRow key={link.id}>
-                  <TableCell className="font-medium">{[link.projectName, link.codebaseName, link.title].filter(Boolean).join(" - ")}</TableCell>
+                  <TableCell className="font-medium">{joinLabels(link.projectName, link.codebaseName, link.title)}</TableCell>
                   <TableCell className="hidden max-w-70 truncate sm:table-cell">
                     <a
                       href={link.url}
@@ -125,7 +124,7 @@ export function LinksSection() {
                     <ResourceActions
                       editLabel={`Edit link ${link.title}`}
                       deleteLabel={`Delete link ${link.title}`}
-                      onEdit={() => { void openUpdateLinkSheet(link); }}
+                      onEdit={() => openUpdateLinkSheet(link)}
                       onDelete={() => openDeleteDialog("link", link.id, link.title)}
                     />
                   </TableCell>

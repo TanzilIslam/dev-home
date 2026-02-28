@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "dev-home",
+  title: "Dev Home",
   description: "A personal Next.js home app.",
 };
 
