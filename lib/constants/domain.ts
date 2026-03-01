@@ -1,7 +1,4 @@
-import type {
-  EngagementType,
-  ProjectStatus,
-} from "@/types/domain";
+import type { EngagementType, ProjectStatus } from "@/types/domain";
 
 type Option<TValue extends string> = {
   value: TValue;
@@ -19,10 +16,7 @@ export const PROJECT_STATUS_OPTIONS: Option<ProjectStatus>[] = [
   { value: "ARCHIVED", label: "Archived" },
 ];
 
-export function getLabelByValue(
-  options: Option<string>[],
-  value: string | null | undefined,
-) {
+export function getLabelByValue(options: Option<string>[], value: string | null | undefined) {
   if (!value) {
     return "";
   }

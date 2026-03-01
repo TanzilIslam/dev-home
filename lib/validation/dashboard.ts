@@ -1,58 +1,11 @@
 ﻿import { z } from "zod";
 
-const idSchema = z
-  .string()
-  .trim()
-  .min(1, "Invalid id.")
-  .max(64, "Invalid id.");
+const idSchema = z.string().trim().min(1, "Invalid id.").max(64, "Invalid id.");
 
 const nullableText = (max: number, tooLongMessage: string) =>
-  z.preprocess(
-    (value) => {
-      if (value === null || value === undefined) {
-        return null;
-      }
-
-      if (typeof value !== "string") {
-        return value;
-      }
-
-      const trimmed = value.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    },
-    z.string().max(max, tooLongMessage).nullable(),
-  );
-
-const nullableInteger = (
-  min: number,
-  max: number,
-  minMessage: string,
-  maxMessage: string,
-) =>
-  z.preprocess(
-    (value) => {
-      if (value === "" || value === null || value === undefined) {
-        return null;
-      }
-
-      if (typeof value === "string") {
-        return Number(value);
-      }
-
-      return value;
-    },
-    z
-      .number()
-      .int("Must be a whole number.")
-      .min(min, minMessage)
-      .max(max, maxMessage)
-      .nullable(),
-  );
-
-const optionalIdSchema = z.preprocess(
-  (value) => {
+  z.preprocess((value) => {
     if (value === null || value === undefined) {
-      return undefined;
+      return null;
     }
 
     if (typeof value !== "string") {
@@ -60,10 +13,34 @@ const optionalIdSchema = z.preprocess(
     }
 
     const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  },
-  idSchema.optional(),
-);
+    return trimmed.length > 0 ? trimmed : null;
+  }, z.string().max(max, tooLongMessage).nullable());
+
+const nullableInteger = (min: number, max: number, minMessage: string, maxMessage: string) =>
+  z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === "string") {
+      return Number(value);
+    }
+
+    return value;
+  }, z.number().int("Must be a whole number.").min(min, minMessage).max(max, maxMessage).nullable());
+
+const optionalIdSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}, idSchema.optional());
 
 export const clientPayloadSchema = z
   .object({
@@ -130,7 +107,11 @@ export const projectPayloadSchema = z.object({
 
 export const codebasePayloadSchema = z.object({
   projectId: idSchema,
-  name: z.string().trim().min(1, "Codebase name is required.").max(120, "Codebase name is too long."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Codebase name is required.")
+    .max(120, "Codebase name is too long."),
   description: nullableText(1000, "Description is too long."),
 });
 

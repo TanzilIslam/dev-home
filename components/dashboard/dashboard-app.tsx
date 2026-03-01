@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEventHandler,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEventHandler } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   SupabaseError,
@@ -19,6 +13,7 @@ import {
   deleteCodebase,
   deleteLink,
   deleteProject,
+  getAuthUser,
   listClientDropdown,
   listClients,
   listCodebaseDropdown,
@@ -26,6 +21,7 @@ import {
   listLinks,
   listProjectDropdown,
   listProjects,
+  onAuthStateChange,
   updateClient,
   updateCodebase,
   updateLink,
@@ -76,6 +72,7 @@ import {
 } from "@/types/dashboard";
 import { FormErrorText } from "@/components/ui/form-error-text";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
   SelectContent,
@@ -87,6 +84,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import {
   DashboardContext,
+  useDashboard,
   type SheetState,
   type DeleteState,
 } from "@/components/dashboard/dashboard-context";
@@ -104,11 +102,12 @@ import { SettingsSection } from "@/components/dashboard/sections/settings-sectio
 import { FileUploadInput } from "@/components/dashboard/file-upload-input";
 import { FileList } from "@/components/dashboard/file-list";
 
+type UserInfo = {
+  email: string;
+  name: string | null;
+};
+
 type DashboardAppProps = {
-  user: {
-    email: string;
-    name: string | null;
-  };
   initialSection?: DashboardSection;
 };
 
@@ -143,13 +142,7 @@ const CLIENT_FIELDS = [
 ] as const;
 const PROJECT_FIELDS = ["clientId", "name", "description", "status"] as const;
 const CODEBASE_FIELDS = ["projectId", "name", "description"] as const;
-const LINK_FIELDS = [
-  "clientId",
-  "projectId",
-  "codebaseId",
-  "title",
-  "url",
-] as const;
+const LINK_FIELDS = ["clientId", "projectId", "codebaseId", "title", "url"] as const;
 
 function getEntityLabel(entity: DashboardEntity) {
   switch (entity) {
@@ -166,8 +159,9 @@ function getEntityLabel(entity: DashboardEntity) {
   }
 }
 
-function ActiveSection({ user }: { user: DashboardAppProps["user"] }) {
+function ActiveSection() {
   const activeSection = useAppStore((s) => s.activeSection);
+  const { user } = useDashboard();
 
   switch (activeSection) {
     case "overview":
@@ -187,8 +181,40 @@ function ActiveSection({ user }: { user: DashboardAppProps["user"] }) {
   }
 }
 
-export function DashboardApp({ user, initialSection }: DashboardAppProps) {
-  // Set store synchronously so server and client render the same section
+export function DashboardApp({ initialSection }: DashboardAppProps) {
+  const router = useRouter();
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Client-side auth guard
+  useEffect(() => {
+    async function checkAuth() {
+      const authUser = await getAuthUser();
+      if (!authUser) {
+        router.replace("/login");
+        return;
+      }
+      setUser({
+        email: authUser.email,
+        name: authUser.name,
+      });
+      setAuthChecked(true);
+    }
+
+    void checkAuth();
+
+    const {
+      data: { subscription },
+    } = onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.replace("/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  // Set store synchronously so initial section matches the URL
   const initializedRef = useRef(false);
   if (!initializedRef.current) {
     initializedRef.current = true;
@@ -218,40 +244,92 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
 
   // Stable fetcher refs — query functions handle auth internally via getCurrentUserId()
   const createListClientsFetcher = useCallback(
-    (params: ListQueryParams) => listClients(params), []);
+    (params: ListQueryParams) => listClients(params),
+    [],
+  );
 
   const createListProjectsFetcher = useCallback(
-    (params: ProjectListQueryParams) => listProjects(params), []);
+    (params: ProjectListQueryParams) => listProjects(params),
+    [],
+  );
 
   const createListCodebasesFetcher = useCallback(
-    (params: CodebaseListQueryParams) => listCodebases(params), []);
+    (params: CodebaseListQueryParams) => listCodebases(params),
+    [],
+  );
 
   const createListLinksFetcher = useCallback(
-    (params: LinkListQueryParams) => listLinks(params), []);
+    (params: LinkListQueryParams) => listLinks(params),
+    [],
+  );
 
   const createListClientDropdownFetcher = useCallback(
-    (params: ListQueryParams) => listClientDropdown(params), []);
+    (params: ListQueryParams) => listClientDropdown(params),
+    [],
+  );
 
   const createListProjectDropdownFetcher = useCallback(
-    (params: ProjectListQueryParams) => listProjectDropdown(params), []);
+    (params: ProjectListQueryParams) => listProjectDropdown(params),
+    [],
+  );
 
   const createListCodebaseDropdownFetcher = useCallback(
-    (params: CodebaseListQueryParams) => listCodebaseDropdown(params), []);
+    (params: CodebaseListQueryParams) => listCodebaseDropdown(params),
+    [],
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>(INITIAL_SHEET_STATE);
   const [deleteState, setDeleteState] = useState<DeleteState>(INITIAL_DELETE_STATE);
   const [isSheetSubmitting, setIsSheetSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { options: clientOptions, load: loadClientOptions } = useDropdownLoader(createListClientDropdownFetcher);
-  const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(createListProjectDropdownFetcher);
-  const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(createListCodebaseDropdownFetcher);
-  const { options: codebaseFormProjectOptions, load: loadCbFormPj, clear: clearCbFormPj } = useDropdownLoader(createListProjectDropdownFetcher);
-  const { options: linkFormProjectOptions, load: loadLinkFormPj, clear: clearLinkFormPj } = useDropdownLoader(createListProjectDropdownFetcher);
-  const { options: linkFormCodebaseOptions, load: loadLinkFormCb, clear: clearLinkFormCb } = useDropdownLoader(createListCodebaseDropdownFetcher);
-  const { options: cbFilterProjectOptions, load: loadCbFilterPj, clear: clearCbFilterPj } = useDropdownLoader(createListProjectDropdownFetcher);
-  const { options: linkFilterProjectOptions, load: loadLinkFilterPj, clear: clearLinkFilterPj } = useDropdownLoader(createListProjectDropdownFetcher);
-  const { options: linkFilterCodebaseOptions, load: loadLinkFilterCb, clear: clearLinkFilterCb } = useDropdownLoader(createListCodebaseDropdownFetcher);
+  const {
+    options: clientOptions,
+    loading: clientOptionsLoading,
+    load: loadClientOptions,
+  } = useDropdownLoader(createListClientDropdownFetcher);
+  const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(
+    createListProjectDropdownFetcher,
+  );
+  const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(
+    createListCodebaseDropdownFetcher,
+  );
+  const {
+    options: codebaseFormProjectOptions,
+    loading: cbFormPjLoading,
+    load: loadCbFormPj,
+    clear: clearCbFormPj,
+  } = useDropdownLoader(createListProjectDropdownFetcher);
+  const {
+    options: linkFormProjectOptions,
+    loading: linkFormPjLoading,
+    load: loadLinkFormPj,
+    clear: clearLinkFormPj,
+  } = useDropdownLoader(createListProjectDropdownFetcher);
+  const {
+    options: linkFormCodebaseOptions,
+    loading: linkFormCbLoading,
+    load: loadLinkFormCb,
+    clear: clearLinkFormCb,
+  } = useDropdownLoader(createListCodebaseDropdownFetcher);
+  const {
+    options: cbFilterProjectOptions,
+    loading: cbFilterPjLoading,
+    load: loadCbFilterPj,
+    clear: clearCbFilterPj,
+  } = useDropdownLoader(createListProjectDropdownFetcher);
+  const {
+    options: linkFilterProjectOptions,
+    loading: linkFilterPjLoading,
+    load: loadLinkFilterPj,
+    clear: clearLinkFilterPj,
+  } = useDropdownLoader(createListProjectDropdownFetcher);
+  const {
+    options: linkFilterCodebaseOptions,
+    loading: linkFilterCbLoading,
+    load: loadLinkFilterCb,
+    clear: clearLinkFilterCb,
+  } = useDropdownLoader(createListCodebaseDropdownFetcher);
   const clientFileUpload = useFileUpload({
     scope: {
       clientId:
@@ -264,25 +342,18 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
   const lastListErrorRef = useRef("");
   const lastListErrorAtRef = useRef(0);
 
-  const handleListError = useCallback(
-    (error: unknown, fallbackMessage: string) => {
-      const message =
-        error instanceof SupabaseError ? error.message : fallbackMessage;
-      const now = Date.now();
+  const handleListError = useCallback((error: unknown, fallbackMessage: string) => {
+    const message = error instanceof SupabaseError ? error.message : fallbackMessage;
+    const now = Date.now();
 
-      if (
-        message === lastListErrorRef.current &&
-        now - lastListErrorAtRef.current < 3000
-      ) {
-        return;
-      }
+    if (message === lastListErrorRef.current && now - lastListErrorAtRef.current < 3000) {
+      return;
+    }
 
-      lastListErrorRef.current = message;
-      lastListErrorAtRef.current = now;
-      toast.error(message);
-    },
-    [],
-  );
+    lastListErrorRef.current = message;
+    lastListErrorAtRef.current = now;
+    toast.error(message);
+  }, []);
 
   const clients = usePaginatedList<ClientItem, Record<string, never>>({
     fetcher: createListClientsFetcher,
@@ -312,56 +383,80 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
   });
 
   const [clientFormValues, setClientFormValues] = useState(DEFAULT_CLIENT_FORM_VALUES);
-  const [clientErrors, setClientErrors] = useState<FormErrorMap<(typeof CLIENT_FIELDS)[number]>>({});
+  const [clientErrors, setClientErrors] = useState<FormErrorMap<(typeof CLIENT_FIELDS)[number]>>(
+    {},
+  );
 
   const [projectFormValues, setProjectFormValues] = useState(DEFAULT_PROJECT_FORM_VALUES);
-  const [projectErrors, setProjectErrors] = useState<FormErrorMap<(typeof PROJECT_FIELDS)[number]>>({});
+  const [projectErrors, setProjectErrors] = useState<FormErrorMap<(typeof PROJECT_FIELDS)[number]>>(
+    {},
+  );
 
   const [codebaseFormValues, setCodebaseFormValues] = useState(DEFAULT_CODEBASE_FORM_VALUES);
-  const [codebaseErrors, setCodebaseErrors] = useState<FormErrorMap<(typeof CODEBASE_FIELDS)[number]>>({});
+  const [codebaseErrors, setCodebaseErrors] = useState<
+    FormErrorMap<(typeof CODEBASE_FIELDS)[number]>
+  >({});
   const [codebaseFormClientId, setCodebaseFormClientId] = useState("");
 
   const [linkFormValues, setLinkFormValues] = useState(DEFAULT_LINK_FORM_VALUES);
   const [linkErrors, setLinkErrors] = useState<FormErrorMap<(typeof LINK_FIELDS)[number]>>({});
 
-  const loadCbFormProjectDropdown = useCallback(async (clientId?: string) => {
-    clearCbFormPj();
-    if (clientId) {
-      await loadCbFormPj({ clientId });
-    } else {
-      await loadCbFormPj();
-    }
-  }, [clearCbFormPj, loadCbFormPj]);
+  const loadCbFormProjectDropdown = useCallback(
+    async (clientId?: string) => {
+      clearCbFormPj();
+      if (clientId) {
+        await loadCbFormPj({ clientId });
+      } else {
+        await loadCbFormPj();
+      }
+    },
+    [clearCbFormPj, loadCbFormPj],
+  );
 
-  const loadLinkFormProjectDropdown = useCallback(async (clientId?: string) => {
-    clearLinkFormPj();
-    if (!clientId) return;
-    await loadLinkFormPj({ clientId });
-  }, [clearLinkFormPj, loadLinkFormPj]);
+  const loadLinkFormProjectDropdown = useCallback(
+    async (clientId?: string) => {
+      clearLinkFormPj();
+      if (!clientId) return;
+      await loadLinkFormPj({ clientId });
+    },
+    [clearLinkFormPj, loadLinkFormPj],
+  );
 
-  const loadLinkFormCodebaseDropdown = useCallback(async (projectId?: string) => {
-    clearLinkFormCb();
-    if (!projectId) return;
-    await loadLinkFormCb({ projectId });
-  }, [clearLinkFormCb, loadLinkFormCb]);
+  const loadLinkFormCodebaseDropdown = useCallback(
+    async (projectId?: string) => {
+      clearLinkFormCb();
+      if (!projectId) return;
+      await loadLinkFormCb({ projectId });
+    },
+    [clearLinkFormCb, loadLinkFormCb],
+  );
 
-  const loadCbFilterProjectDropdown = useCallback(async (clientId?: string) => {
-    clearCbFilterPj();
-    if (!clientId) return;
-    await loadCbFilterPj({ clientId });
-  }, [clearCbFilterPj, loadCbFilterPj]);
+  const loadCbFilterProjectDropdown = useCallback(
+    async (clientId?: string) => {
+      clearCbFilterPj();
+      if (!clientId) return;
+      await loadCbFilterPj({ clientId });
+    },
+    [clearCbFilterPj, loadCbFilterPj],
+  );
 
-  const loadLinkFilterProjectDropdown = useCallback(async (clientId?: string) => {
-    clearLinkFilterPj();
-    if (!clientId) return;
-    await loadLinkFilterPj({ clientId });
-  }, [clearLinkFilterPj, loadLinkFilterPj]);
+  const loadLinkFilterProjectDropdown = useCallback(
+    async (clientId?: string) => {
+      clearLinkFilterPj();
+      if (!clientId) return;
+      await loadLinkFilterPj({ clientId });
+    },
+    [clearLinkFilterPj, loadLinkFilterPj],
+  );
 
-  const loadLinkFilterCodebaseDropdown = useCallback(async (projectId?: string) => {
-    clearLinkFilterCb();
-    if (!projectId) return;
-    await loadLinkFilterCb({ projectId });
-  }, [clearLinkFilterCb, loadLinkFilterCb]);
+  const loadLinkFilterCodebaseDropdown = useCallback(
+    async (projectId?: string) => {
+      clearLinkFilterCb();
+      if (!projectId) return;
+      await loadLinkFilterCb({ projectId });
+    },
+    [clearLinkFilterCb, loadLinkFilterCb],
+  );
 
   const refreshAllReferenceOptions = useCallback(async () => {
     await Promise.all([loadClientOptions(), loadProjectOptions(), loadCodebaseOptions()]);
@@ -403,16 +498,17 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
   // --- Sheet/delete handlers (EXACT same as original) ---
 
   const resetSheetState = useCallback(() => {
-    setSheetState(INITIAL_SHEET_STATE);
-    setIsSheetSubmitting(false);
+    // Trigger close animation first, then unmount after it completes (300ms)
+    setSheetState((previous) => ({ ...previous, open: false }));
+    setTimeout(() => {
+      setSheetState(INITIAL_SHEET_STATE);
+      setIsSheetSubmitting(false);
+    }, 300);
   }, []);
 
-  const openDeleteDialog = useCallback(
-    (entity: DashboardEntity, id: string, label: string) => {
-      setDeleteState({ open: true, entity, id, label });
-    },
-    [],
-  );
+  const openDeleteDialog = useCallback((entity: DashboardEntity, id: string, label: string) => {
+    setDeleteState({ open: true, entity, id, label });
+  }, []);
 
   const closeDeleteDialog = useCallback((open: boolean) => {
     if (!open) {
@@ -440,7 +536,10 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
         case "client": {
           clients.reload();
           if (action !== "create") projects.reload();
-          if (action === "delete") { codebases.reload(); links.reload(); }
+          if (action === "delete") {
+            codebases.reload();
+            links.reload();
+          }
           await refreshReferenceOptionsForMutation(entity, action);
           if (action === "delete" && links.filters.projectId) {
             await loadLinkFilterCodebaseDropdown(links.filters.projectId);
@@ -449,7 +548,10 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
         }
         case "project": {
           projects.reload();
-          if (action !== "create") { codebases.reload(); links.reload(); }
+          if (action !== "create") {
+            codebases.reload();
+            links.reload();
+          }
           await refreshReferenceOptionsForMutation(entity, action);
           if (action === "delete" && links.filters.projectId) {
             await loadLinkFilterCodebaseDropdown(links.filters.projectId);
@@ -473,7 +575,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
           break;
       }
     },
-    [clients, projects, codebases, links, refreshReferenceOptionsForMutation, loadLinkFilterCodebaseDropdown],
+    [
+      clients,
+      projects,
+      codebases,
+      links,
+      refreshReferenceOptionsForMutation,
+      loadLinkFilterCodebaseDropdown,
+    ],
   );
 
   // --- Open sheet handlers ---
@@ -531,17 +640,20 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     await loadCbFormProjectDropdown();
   }, [codebases.filters.projectId, loadCbFormProjectDropdown]);
 
-  const openUpdateCodebaseSheet = useCallback(async (codebase: CodebaseItem) => {
-    setCodebaseFormValues({
-      projectId: codebase.projectId,
-      name: codebase.name,
-      description: codebase.description,
-    });
-    setCodebaseFormClientId(codebase.clientId);
-    setCodebaseErrors({});
-    setSheetState({ open: true, entity: "codebase", mode: "update", id: codebase.id });
-    await loadCbFormProjectDropdown(codebase.clientId);
-  }, [loadCbFormProjectDropdown]);
+  const openUpdateCodebaseSheet = useCallback(
+    async (codebase: CodebaseItem) => {
+      setCodebaseFormValues({
+        projectId: codebase.projectId,
+        name: codebase.name,
+        description: codebase.description,
+      });
+      setCodebaseFormClientId(codebase.clientId);
+      setCodebaseErrors({});
+      setSheetState({ open: true, entity: "codebase", mode: "update", id: codebase.id });
+      await loadCbFormProjectDropdown(codebase.clientId);
+    },
+    [loadCbFormProjectDropdown],
+  );
 
   const openCreateLinkSheet = useCallback(async () => {
     const clientId = links.filters.clientId;
@@ -558,7 +670,13 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
       loadLinkFormProjectDropdown(clientId),
       loadLinkFormCodebaseDropdown(projectId),
     ]);
-  }, [links.filters.clientId, links.filters.codebaseId, links.filters.projectId, loadLinkFormProjectDropdown, loadLinkFormCodebaseDropdown]);
+  }, [
+    links.filters.clientId,
+    links.filters.codebaseId,
+    links.filters.projectId,
+    loadLinkFormProjectDropdown,
+    loadLinkFormCodebaseDropdown,
+  ]);
 
   const openUpdateLinkSheet = useCallback(
     async (link: LinkItem) => {
@@ -588,19 +706,29 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     setIsDeleting(true);
     try {
       switch (entity) {
-        case "client": await deleteClient(id); break;
-        case "project": await deleteProject(id); break;
-        case "codebase": await deleteCodebase(id); break;
-        case "link": await deleteLink(id); break;
-        default: break;
+        case "client":
+          await deleteClient(id);
+          break;
+        case "project":
+          await deleteProject(id);
+          break;
+        case "codebase":
+          await deleteCodebase(id);
+          break;
+        case "link":
+          await deleteLink(id);
+          break;
+        default:
+          break;
       }
       toast.success(`${getEntityLabel(entity)} deleted successfully.`);
       setDeleteState(INITIAL_DELETE_STATE);
       await reloadAfterMutation(entity, "delete");
     } catch (error) {
-      const message = error instanceof SupabaseError
-        ? error.message
-        : `Unable to delete ${getEntityLabel(entity).toLowerCase()} right now.`;
+      const message =
+        error instanceof SupabaseError
+          ? error.message
+          : `Unable to delete ${getEntityLabel(entity).toLowerCase()} right now.`;
       toast.error(message);
     } finally {
       setIsDeleting(false);
@@ -633,7 +761,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     } finally {
       setIsSheetSubmitting(false);
     }
-  }, [clientFormValues, isSheetSubmitting, reloadAfterMutation, resetSheetState, sheetState.id, sheetState.mode]);
+  }, [
+    clientFormValues,
+    isSheetSubmitting,
+    reloadAfterMutation,
+    resetSheetState,
+    sheetState.id,
+    sheetState.mode,
+  ]);
 
   const submitProjectForm = useCallback(async () => {
     if (isSheetSubmitting) return;
@@ -655,11 +790,23 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
       resetSheetState();
       await reloadAfterMutation("project", sheetState.mode);
     } catch (error) {
-      showRequestError(error, PROJECT_FIELDS, setProjectErrors, "Unable to save project right now.");
+      showRequestError(
+        error,
+        PROJECT_FIELDS,
+        setProjectErrors,
+        "Unable to save project right now.",
+      );
     } finally {
       setIsSheetSubmitting(false);
     }
-  }, [isSheetSubmitting, projectFormValues, reloadAfterMutation, resetSheetState, sheetState.id, sheetState.mode]);
+  }, [
+    isSheetSubmitting,
+    projectFormValues,
+    reloadAfterMutation,
+    resetSheetState,
+    sheetState.id,
+    sheetState.mode,
+  ]);
 
   const submitCodebaseForm = useCallback(async () => {
     if (isSheetSubmitting) return;
@@ -685,11 +832,24 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
       resetSheetState();
       await reloadAfterMutation("codebase", sheetState.mode);
     } catch (error) {
-      showRequestError(error, CODEBASE_FIELDS, setCodebaseErrors, "Unable to save codebase right now.");
+      showRequestError(
+        error,
+        CODEBASE_FIELDS,
+        setCodebaseErrors,
+        "Unable to save codebase right now.",
+      );
     } finally {
       setIsSheetSubmitting(false);
     }
-  }, [codebaseFormClientId, codebaseFormValues, isSheetSubmitting, reloadAfterMutation, resetSheetState, sheetState.id, sheetState.mode]);
+  }, [
+    codebaseFormClientId,
+    codebaseFormValues,
+    isSheetSubmitting,
+    reloadAfterMutation,
+    resetSheetState,
+    sheetState.id,
+    sheetState.mode,
+  ]);
 
   const submitLinkForm = useCallback(async () => {
     if (isSheetSubmitting) return;
@@ -715,18 +875,37 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     } finally {
       setIsSheetSubmitting(false);
     }
-  }, [isSheetSubmitting, linkFormValues, reloadAfterMutation, resetSheetState, sheetState.id, sheetState.mode]);
+  }, [
+    isSheetSubmitting,
+    linkFormValues,
+    reloadAfterMutation,
+    resetSheetState,
+    sheetState.id,
+    sheetState.mode,
+  ]);
 
-  const handleSheetSubmit: FormEventHandler<HTMLFormElement> = useCallback((event) => {
-    event.preventDefault();
-    switch (sheetState.entity) {
-      case "client": void submitClientForm(); break;
-      case "project": void submitProjectForm(); break;
-      case "codebase": void submitCodebaseForm(); break;
-      case "link": void submitLinkForm(); break;
-      default: break;
-    }
-  }, [sheetState.entity, submitClientForm, submitProjectForm, submitCodebaseForm, submitLinkForm]);
+  const handleSheetSubmit: FormEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      event.preventDefault();
+      switch (sheetState.entity) {
+        case "client":
+          void submitClientForm();
+          break;
+        case "project":
+          void submitProjectForm();
+          break;
+        case "codebase":
+          void submitCodebaseForm();
+          break;
+        case "link":
+          void submitLinkForm();
+          break;
+        default:
+          break;
+      }
+    },
+    [sheetState.entity, submitClientForm, submitProjectForm, submitCodebaseForm, submitLinkForm],
+  );
 
   const sheetTitle = useMemo(() => {
     if (!sheetState.entity) return "";
@@ -746,7 +925,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
 
   const contextValue = useMemo(
     () => ({
-      user,
+      user: user!,
       clients,
       projects,
       codebases,
@@ -761,7 +940,9 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
       isDeleting,
       openDeleteDialog,
       closeDeleteDialog,
-      handleDeleteConfirm: () => { void handleDeleteConfirm(); },
+      handleDeleteConfirm: () => {
+        void handleDeleteConfirm();
+      },
       clientFormValues,
       setClientFormValues,
       clientErrors,
@@ -781,45 +962,114 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
       codebaseFormClientId,
       setCodebaseFormClientId,
       codebaseFormProjectOptions,
+      codebaseFormProjectLoading: cbFormPjLoading,
       loadCbFormProjectDropdown,
-      openCreateCodebaseSheet: () => { void openCreateCodebaseSheet(); },
-      openUpdateCodebaseSheet: (codebase: CodebaseItem) => { void openUpdateCodebaseSheet(codebase); },
+      openCreateCodebaseSheet: () => {
+        void openCreateCodebaseSheet();
+      },
+      openUpdateCodebaseSheet: (codebase: CodebaseItem) => {
+        void openUpdateCodebaseSheet(codebase);
+      },
       linkFormValues,
       setLinkFormValues,
       linkErrors,
       setLinkErrors,
       linkFormProjectOptions,
+      linkFormProjectLoading: linkFormPjLoading,
       loadLinkFormProjectDropdown,
       linkFormCodebaseOptions,
+      linkFormCodebaseLoading: linkFormCbLoading,
       loadLinkFormCodebaseDropdown,
-      openCreateLinkSheet: () => { void openCreateLinkSheet(); },
-      openUpdateLinkSheet: (link: LinkItem) => { void openUpdateLinkSheet(link); },
+      openCreateLinkSheet: () => {
+        void openCreateLinkSheet();
+      },
+      openUpdateLinkSheet: (link: LinkItem) => {
+        void openUpdateLinkSheet(link);
+      },
       clientOptions,
+      clientOptionsLoading,
       projectOptions,
       codebaseOptions,
       cbFilterProjectOptions,
+      cbFilterProjectLoading: cbFilterPjLoading,
       loadCbFilterProjectDropdown,
       linkFilterProjectOptions,
+      linkFilterProjectLoading: linkFilterPjLoading,
       loadLinkFilterProjectDropdown,
       linkFilterCodebaseOptions,
+      linkFilterCodebaseLoading: linkFilterCbLoading,
       loadLinkFilterCodebaseDropdown,
     }),
     [
-      user, clients, projects, codebases, links,
-      sheetState, isSheetSubmitting, handleSheetSubmit, handleSheetOpenChange, sheetTitle, sheetDescription,
-      deleteState, isDeleting, openDeleteDialog, closeDeleteDialog, handleDeleteConfirm,
-      clientFormValues, clientErrors, openCreateClientSheet, openUpdateClientSheet,
-      projectFormValues, projectErrors, openCreateProjectSheet, openUpdateProjectSheet,
-      codebaseFormValues, codebaseErrors, codebaseFormClientId, codebaseFormProjectOptions, loadCbFormProjectDropdown,
-      openCreateCodebaseSheet, openUpdateCodebaseSheet,
-      linkFormValues, linkErrors, linkFormProjectOptions, loadLinkFormProjectDropdown, linkFormCodebaseOptions, loadLinkFormCodebaseDropdown,
-      openCreateLinkSheet, openUpdateLinkSheet,
-      clientOptions, projectOptions, codebaseOptions,
-      cbFilterProjectOptions, loadCbFilterProjectDropdown,
-      linkFilterProjectOptions, loadLinkFilterProjectDropdown,
-      linkFilterCodebaseOptions, loadLinkFilterCodebaseDropdown,
+      user,
+      clients,
+      projects,
+      codebases,
+      links,
+      sheetState,
+      isSheetSubmitting,
+      handleSheetSubmit,
+      handleSheetOpenChange,
+      sheetTitle,
+      sheetDescription,
+      deleteState,
+      isDeleting,
+      openDeleteDialog,
+      closeDeleteDialog,
+      handleDeleteConfirm,
+      clientFormValues,
+      clientErrors,
+      openCreateClientSheet,
+      openUpdateClientSheet,
+      projectFormValues,
+      projectErrors,
+      openCreateProjectSheet,
+      openUpdateProjectSheet,
+      codebaseFormValues,
+      codebaseErrors,
+      codebaseFormClientId,
+      codebaseFormProjectOptions,
+      cbFormPjLoading,
+      loadCbFormProjectDropdown,
+      openCreateCodebaseSheet,
+      openUpdateCodebaseSheet,
+      linkFormValues,
+      linkErrors,
+      linkFormProjectOptions,
+      linkFormPjLoading,
+      loadLinkFormProjectDropdown,
+      linkFormCodebaseOptions,
+      linkFormCbLoading,
+      loadLinkFormCodebaseDropdown,
+      openCreateLinkSheet,
+      openUpdateLinkSheet,
+      clientOptions,
+      clientOptionsLoading,
+      projectOptions,
+      codebaseOptions,
+      cbFilterProjectOptions,
+      cbFilterPjLoading,
+      loadCbFilterProjectDropdown,
+      linkFilterProjectOptions,
+      linkFilterPjLoading,
+      loadLinkFilterProjectDropdown,
+      linkFilterCodebaseOptions,
+      linkFilterCbLoading,
+      loadLinkFilterCodebaseDropdown,
     ],
   );
+
+  // Show loading spinner while auth is being verified
+  if (!authChecked || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <div className="border-primary size-4 animate-spin rounded-full border-2 border-t-transparent" />
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardContext.Provider value={contextValue}>
@@ -828,7 +1078,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
         <SidebarInset>
           <DashboardHeader />
           <div className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
-            <ActiveSection user={user} />
+            <ActiveSection />
           </div>
         </SidebarInset>
       </SidebarProvider>
@@ -846,7 +1096,9 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
           {sheetState.entity === "client" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="client-name" className="text-sm font-medium">Name</label>
+                <label htmlFor="client-name" className="text-sm font-medium">
+                  Name
+                </label>
                 <Input
                   id="client-name"
                   value={clientFormValues.name}
@@ -858,15 +1110,19 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                 <FormErrorText message={clientErrors.name} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="client-engagement" className="text-sm font-medium">Engagement type</label>
+                <label htmlFor="client-engagement" className="text-sm font-medium">
+                  Engagement type
+                </label>
                 <Select
                   value={clientFormValues.engagementType}
                   onValueChange={(value) => {
                     setClientFormValues((p) => ({
                       ...p,
                       engagementType: toEngagementType(value),
-                      workingDaysPerWeek: value === "TIME_BASED" ? p.workingDaysPerWeek ?? 5 : null,
-                      workingHoursPerDay: value === "TIME_BASED" ? p.workingHoursPerDay ?? 8 : null,
+                      workingDaysPerWeek:
+                        value === "TIME_BASED" ? (p.workingDaysPerWeek ?? 5) : null,
+                      workingHoursPerDay:
+                        value === "TIME_BASED" ? (p.workingHoursPerDay ?? 8) : null,
                     }));
                     setClientErrors((p) => ({ ...p, engagementType: undefined, form: undefined }));
                   }}
@@ -876,7 +1132,9 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {ENGAGEMENT_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -884,24 +1142,50 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="client-days" className="text-sm font-medium">Working days per week</label>
-                  <Input id="client-days" type="number" min={1} max={7}
+                  <label htmlFor="client-days" className="text-sm font-medium">
+                    Working days per week
+                  </label>
+                  <Input
+                    id="client-days"
+                    type="number"
+                    min={1}
+                    max={7}
                     value={clientFormValues.workingDaysPerWeek ?? ""}
                     onChange={(e) => {
-                      setClientFormValues((p) => ({ ...p, workingDaysPerWeek: toNullableNumber(e.target.value) }));
-                      setClientErrors((p) => ({ ...p, workingDaysPerWeek: undefined, form: undefined }));
+                      setClientFormValues((p) => ({
+                        ...p,
+                        workingDaysPerWeek: toNullableNumber(e.target.value),
+                      }));
+                      setClientErrors((p) => ({
+                        ...p,
+                        workingDaysPerWeek: undefined,
+                        form: undefined,
+                      }));
                     }}
                     disabled={clientFormValues.engagementType === "PROJECT_BASED"}
                   />
                   <FormErrorText message={clientErrors.workingDaysPerWeek} />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="client-hours" className="text-sm font-medium">Working hours per day</label>
-                  <Input id="client-hours" type="number" min={1} max={24}
+                  <label htmlFor="client-hours" className="text-sm font-medium">
+                    Working hours per day
+                  </label>
+                  <Input
+                    id="client-hours"
+                    type="number"
+                    min={1}
+                    max={24}
                     value={clientFormValues.workingHoursPerDay ?? ""}
                     onChange={(e) => {
-                      setClientFormValues((p) => ({ ...p, workingHoursPerDay: toNullableNumber(e.target.value) }));
-                      setClientErrors((p) => ({ ...p, workingHoursPerDay: undefined, form: undefined }));
+                      setClientFormValues((p) => ({
+                        ...p,
+                        workingHoursPerDay: toNullableNumber(e.target.value),
+                      }));
+                      setClientErrors((p) => ({
+                        ...p,
+                        workingHoursPerDay: undefined,
+                        form: undefined,
+                      }));
                     }}
                     disabled={clientFormValues.engagementType === "PROJECT_BASED"}
                   />
@@ -909,8 +1193,13 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <label htmlFor="client-email" className="text-sm font-medium">Email</label>
-                <Input id="client-email" type="email" value={clientFormValues.email ?? ""}
+                <label htmlFor="client-email" className="text-sm font-medium">
+                  Email
+                </label>
+                <Input
+                  id="client-email"
+                  type="email"
+                  value={clientFormValues.email ?? ""}
                   onChange={(e) => {
                     setClientFormValues((p) => ({ ...p, email: toNullableText(e.target.value) }));
                     setClientErrors((p) => ({ ...p, email: undefined, form: undefined }));
@@ -920,8 +1209,12 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="client-phone" className="text-sm font-medium">Phone</label>
-                  <Input id="client-phone" value={clientFormValues.phone ?? ""}
+                  <label htmlFor="client-phone" className="text-sm font-medium">
+                    Phone
+                  </label>
+                  <Input
+                    id="client-phone"
+                    value={clientFormValues.phone ?? ""}
                     onChange={(e) => {
                       setClientFormValues((p) => ({ ...p, phone: toNullableText(e.target.value) }));
                       setClientErrors((p) => ({ ...p, phone: undefined, form: undefined }));
@@ -930,10 +1223,17 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                   <FormErrorText message={clientErrors.phone} />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="client-whatsapp" className="text-sm font-medium">WhatsApp</label>
-                  <Input id="client-whatsapp" value={clientFormValues.whatsapp ?? ""}
+                  <label htmlFor="client-whatsapp" className="text-sm font-medium">
+                    WhatsApp
+                  </label>
+                  <Input
+                    id="client-whatsapp"
+                    value={clientFormValues.whatsapp ?? ""}
                     onChange={(e) => {
-                      setClientFormValues((p) => ({ ...p, whatsapp: toNullableText(e.target.value) }));
+                      setClientFormValues((p) => ({
+                        ...p,
+                        whatsapp: toNullableText(e.target.value),
+                      }));
                       setClientErrors((p) => ({ ...p, whatsapp: undefined, form: undefined }));
                     }}
                   />
@@ -941,8 +1241,13 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <label htmlFor="client-address" className="text-sm font-medium">Address</label>
-                <Textarea id="client-address" rows={2} value={clientFormValues.address ?? ""}
+                <label htmlFor="client-address" className="text-sm font-medium">
+                  Address
+                </label>
+                <Textarea
+                  id="client-address"
+                  rows={2}
+                  value={clientFormValues.address ?? ""}
                   onChange={(e) => {
                     setClientFormValues((p) => ({ ...p, address: toNullableText(e.target.value) }));
                     setClientErrors((p) => ({ ...p, address: undefined, form: undefined }));
@@ -951,8 +1256,13 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                 <FormErrorText message={clientErrors.address} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="client-notes" className="text-sm font-medium">Notes</label>
-                <Textarea id="client-notes" rows={4} value={clientFormValues.notes ?? ""}
+                <label htmlFor="client-notes" className="text-sm font-medium">
+                  Notes
+                </label>
+                <Textarea
+                  id="client-notes"
+                  rows={4}
+                  value={clientFormValues.notes ?? ""}
                   onChange={(e) => {
                     setClientFormValues((p) => ({ ...p, notes: toNullableText(e.target.value) }));
                     setClientErrors((p) => ({ ...p, notes: undefined, form: undefined }));
@@ -975,15 +1285,15 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
                     files={clientFileUpload.files}
                     isLoading={clientFileUpload.isLoading}
                     onDelete={clientFileUpload.remove}
-                    onDownload={(id, name) => {
-                      void downloadFile(id, name);
-                    }}
+                    onDownload={downloadFile}
                     onView={viewFile}
                   />
                 </div>
               ) : null}
               {clientErrors.form ? (
-                <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{clientErrors.form}</p>
+                <p className="bg-destructive/10 text-destructive border-destructive/30 rounded-md border px-3 py-2 text-sm">
+                  {clientErrors.form}
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -991,50 +1301,90 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
           {sheetState.entity === "project" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="project-client" className="text-sm font-medium">Client</label>
-                <Select value={projectFormValues.clientId || "__none"} onValueChange={(v) => {
-                  setProjectFormValues((p) => ({ ...p, clientId: v === "__none" ? "" : v }));
-                  setProjectErrors((p) => ({ ...p, clientId: undefined, form: undefined }));
-                }}>
-                  <SelectTrigger id="project-client" className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+                <label htmlFor="project-client" className="text-sm font-medium">
+                  Client
+                </label>
+                <Select
+                  value={projectFormValues.clientId || "__none"}
+                  onValueChange={(v) => {
+                    setProjectFormValues((p) => ({ ...p, clientId: v === "__none" ? "" : v }));
+                    setProjectErrors((p) => ({ ...p, clientId: undefined, form: undefined }));
+                  }}
+                >
+                  <SelectTrigger id="project-client" className="w-full">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">Select client</SelectItem>
-                    {clientOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {clientOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={projectErrors.clientId} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="project-name" className="text-sm font-medium">Name</label>
-                <Input id="project-name" value={projectFormValues.name} onChange={(e) => {
-                  setProjectFormValues((p) => ({ ...p, name: e.target.value }));
-                  setProjectErrors((p) => ({ ...p, name: undefined, form: undefined }));
-                }} />
+                <label htmlFor="project-name" className="text-sm font-medium">
+                  Name
+                </label>
+                <Input
+                  id="project-name"
+                  value={projectFormValues.name}
+                  onChange={(e) => {
+                    setProjectFormValues((p) => ({ ...p, name: e.target.value }));
+                    setProjectErrors((p) => ({ ...p, name: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={projectErrors.name} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="project-status" className="text-sm font-medium">Status</label>
-                <Select value={projectFormValues.status} onValueChange={(v) => {
-                  setProjectFormValues((p) => ({ ...p, status: toProjectStatus(v) }));
-                  setProjectErrors((p) => ({ ...p, status: undefined, form: undefined }));
-                }}>
-                  <SelectTrigger id="project-status" className="w-full"><SelectValue placeholder="Select status" /></SelectTrigger>
+                <label htmlFor="project-status" className="text-sm font-medium">
+                  Status
+                </label>
+                <Select
+                  value={projectFormValues.status}
+                  onValueChange={(v) => {
+                    setProjectFormValues((p) => ({ ...p, status: toProjectStatus(v) }));
+                    setProjectErrors((p) => ({ ...p, status: undefined, form: undefined }));
+                  }}
+                >
+                  <SelectTrigger id="project-status" className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {PROJECT_STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
+                    {PROJECT_STATUS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={projectErrors.status} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="project-description" className="text-sm font-medium">Description</label>
-                <Textarea id="project-description" rows={4} value={projectFormValues.description ?? ""} onChange={(e) => {
-                  setProjectFormValues((p) => ({ ...p, description: toNullableText(e.target.value) }));
-                  setProjectErrors((p) => ({ ...p, description: undefined, form: undefined }));
-                }} />
+                <label htmlFor="project-description" className="text-sm font-medium">
+                  Description
+                </label>
+                <Textarea
+                  id="project-description"
+                  rows={4}
+                  value={projectFormValues.description ?? ""}
+                  onChange={(e) => {
+                    setProjectFormValues((p) => ({
+                      ...p,
+                      description: toNullableText(e.target.value),
+                    }));
+                    setProjectErrors((p) => ({ ...p, description: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={projectErrors.description} />
               </div>
               {projectErrors.form ? (
-                <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{projectErrors.form}</p>
+                <p className="bg-destructive/10 text-destructive border-destructive/30 rounded-md border px-3 py-2 text-sm">
+                  {projectErrors.form}
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -1042,54 +1392,90 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
           {sheetState.entity === "codebase" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="codebase-client" className="text-sm font-medium">Client</label>
-                <Select value={codebaseFormClientId || "__none"} onValueChange={(v) => {
-                  const clientId = v === "__none" ? "" : v;
-                  setCodebaseFormClientId(clientId);
-                  setCodebaseFormValues((p) => ({ ...p, projectId: "" }));
-                  setCodebaseErrors((p) => ({ ...p, projectId: undefined, form: undefined }));
-                  void loadCbFormProjectDropdown(clientId || undefined);
-                }}>
-                  <SelectTrigger id="codebase-client" className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+                <label htmlFor="codebase-client" className="text-sm font-medium">
+                  Client
+                </label>
+                <Select
+                  value={codebaseFormClientId || "__none"}
+                  onValueChange={(v) => {
+                    const clientId = v === "__none" ? "" : v;
+                    setCodebaseFormClientId(clientId);
+                    setCodebaseFormValues((p) => ({ ...p, projectId: "" }));
+                    setCodebaseErrors((p) => ({ ...p, projectId: undefined, form: undefined }));
+                    void loadCbFormProjectDropdown(clientId || undefined);
+                  }}
+                >
+                  <SelectTrigger id="codebase-client" className="w-full">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">Select client</SelectItem>
-                    {clientOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {clientOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={codebaseErrors.form} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="codebase-project" className="text-sm font-medium">Project</label>
+                <label htmlFor="codebase-project" className="text-sm font-medium">
+                  Project
+                </label>
                 <Select
                   value={codebaseFormValues.projectId || "__none"}
                   onValueChange={(v) => {
                     setCodebaseFormValues((p) => ({ ...p, projectId: v === "__none" ? "" : v }));
                     setCodebaseErrors((p) => ({ ...p, projectId: undefined, form: undefined }));
                   }}
-                  disabled={!codebaseFormClientId}
+                  disabled={!codebaseFormClientId || cbFormPjLoading}
                 >
-                  <SelectTrigger id="codebase-project" className="w-full"><SelectValue placeholder="Select project" /></SelectTrigger>
+                  <SelectTrigger id="codebase-project" className="w-full">
+                    {cbFormPjLoading ? <Spinner className="size-3.5" /> : null}
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">Select project</SelectItem>
-                    {codebaseFormProjectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {codebaseFormProjectOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={codebaseErrors.projectId} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="codebase-name" className="text-sm font-medium">Name</label>
-                <Input id="codebase-name" value={codebaseFormValues.name} onChange={(e) => {
-                  setCodebaseFormValues((p) => ({ ...p, name: e.target.value }));
-                  setCodebaseErrors((p) => ({ ...p, name: undefined, form: undefined }));
-                }} />
+                <label htmlFor="codebase-name" className="text-sm font-medium">
+                  Name
+                </label>
+                <Input
+                  id="codebase-name"
+                  value={codebaseFormValues.name}
+                  onChange={(e) => {
+                    setCodebaseFormValues((p) => ({ ...p, name: e.target.value }));
+                    setCodebaseErrors((p) => ({ ...p, name: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={codebaseErrors.name} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="codebase-description" className="text-sm font-medium">Description</label>
-                <Textarea id="codebase-description" rows={4} value={codebaseFormValues.description ?? ""} onChange={(e) => {
-                  setCodebaseFormValues((p) => ({ ...p, description: toNullableText(e.target.value) }));
-                  setCodebaseErrors((p) => ({ ...p, description: undefined, form: undefined }));
-                }} />
+                <label htmlFor="codebase-description" className="text-sm font-medium">
+                  Description
+                </label>
+                <Textarea
+                  id="codebase-description"
+                  rows={4}
+                  value={codebaseFormValues.description ?? ""}
+                  onChange={(e) => {
+                    setCodebaseFormValues((p) => ({
+                      ...p,
+                      description: toNullableText(e.target.value),
+                    }));
+                    setCodebaseErrors((p) => ({ ...p, description: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={codebaseErrors.description} />
               </div>
             </div>
@@ -1098,70 +1484,133 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
           {sheetState.entity === "link" ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="link-client" className="text-sm font-medium">Client</label>
-                <Select value={linkFormValues.clientId ?? "__none"} onValueChange={(v) => {
-                  const clientId = v === "__none" ? null : v;
-                  setLinkFormValues((p) => ({ ...p, clientId, projectId: "", codebaseId: null }));
-                  setLinkErrors((p) => ({ ...p, clientId: undefined, projectId: undefined, codebaseId: undefined, form: undefined }));
-                  void loadLinkFormProjectDropdown(clientId ?? undefined);
-                  clearLinkFormCb();
-                }}>
-                  <SelectTrigger id="link-client" className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+                <label htmlFor="link-client" className="text-sm font-medium">
+                  Client
+                </label>
+                <Select
+                  value={linkFormValues.clientId ?? "__none"}
+                  onValueChange={(v) => {
+                    const clientId = v === "__none" ? null : v;
+                    setLinkFormValues((p) => ({ ...p, clientId, projectId: "", codebaseId: null }));
+                    setLinkErrors((p) => ({
+                      ...p,
+                      clientId: undefined,
+                      projectId: undefined,
+                      codebaseId: undefined,
+                      form: undefined,
+                    }));
+                    void loadLinkFormProjectDropdown(clientId ?? undefined);
+                    clearLinkFormCb();
+                  }}
+                >
+                  <SelectTrigger id="link-client" className="w-full">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">No client</SelectItem>
-                    {clientOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {clientOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={linkErrors.clientId} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="link-project" className="text-sm font-medium">Project (optional)</label>
-                <Select value={linkFormValues.projectId || "__none"} onValueChange={(v) => {
-                  const projectId = v === "__none" ? "" : v;
-                  setLinkFormValues((p) => ({ ...p, projectId, codebaseId: null }));
-                  setLinkErrors((p) => ({ ...p, projectId: undefined, codebaseId: undefined, form: undefined }));
-                  void loadLinkFormCodebaseDropdown(projectId);
-                }} disabled={!linkFormValues.clientId}>
-                  <SelectTrigger id="link-project" className="w-full"><SelectValue placeholder="Select project" /></SelectTrigger>
+                <label htmlFor="link-project" className="text-sm font-medium">
+                  Project (optional)
+                </label>
+                <Select
+                  value={linkFormValues.projectId || "__none"}
+                  onValueChange={(v) => {
+                    const projectId = v === "__none" ? "" : v;
+                    setLinkFormValues((p) => ({ ...p, projectId, codebaseId: null }));
+                    setLinkErrors((p) => ({
+                      ...p,
+                      projectId: undefined,
+                      codebaseId: undefined,
+                      form: undefined,
+                    }));
+                    void loadLinkFormCodebaseDropdown(projectId);
+                  }}
+                  disabled={!linkFormValues.clientId || linkFormPjLoading}
+                >
+                  <SelectTrigger id="link-project" className="w-full">
+                    {linkFormPjLoading ? <Spinner className="size-3.5" /> : null}
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">No project</SelectItem>
-                    {linkFormProjectOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {linkFormProjectOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={linkErrors.projectId} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="link-codebase" className="text-sm font-medium">Codebase (optional)</label>
-                <Select value={linkFormValues.codebaseId ?? "__none"} onValueChange={(v) => {
-                  setLinkFormValues((p) => ({ ...p, codebaseId: v === "__none" ? null : v }));
-                  setLinkErrors((p) => ({ ...p, codebaseId: undefined, form: undefined }));
-                }} disabled={!linkFormValues.projectId}>
-                  <SelectTrigger id="link-codebase" className="w-full"><SelectValue placeholder="Select codebase" /></SelectTrigger>
+                <label htmlFor="link-codebase" className="text-sm font-medium">
+                  Codebase (optional)
+                </label>
+                <Select
+                  value={linkFormValues.codebaseId ?? "__none"}
+                  onValueChange={(v) => {
+                    setLinkFormValues((p) => ({ ...p, codebaseId: v === "__none" ? null : v }));
+                    setLinkErrors((p) => ({ ...p, codebaseId: undefined, form: undefined }));
+                  }}
+                  disabled={!linkFormValues.projectId || linkFormCbLoading}
+                >
+                  <SelectTrigger id="link-codebase" className="w-full">
+                    {linkFormCbLoading ? <Spinner className="size-3.5" /> : null}
+                    <SelectValue placeholder="Select codebase" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">No codebase</SelectItem>
-                    {linkFormCodebaseOptions.map((o) => (<SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>))}
+                    {linkFormCodebaseOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormErrorText message={linkErrors.codebaseId} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="link-title" className="text-sm font-medium">Title</label>
-                <Input id="link-title" value={linkFormValues.title} onChange={(e) => {
-                  setLinkFormValues((p) => ({ ...p, title: e.target.value }));
-                  setLinkErrors((p) => ({ ...p, title: undefined, form: undefined }));
-                }} />
+                <label htmlFor="link-title" className="text-sm font-medium">
+                  Title
+                </label>
+                <Input
+                  id="link-title"
+                  value={linkFormValues.title}
+                  onChange={(e) => {
+                    setLinkFormValues((p) => ({ ...p, title: e.target.value }));
+                    setLinkErrors((p) => ({ ...p, title: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={linkErrors.title} />
               </div>
               <div className="space-y-2">
-                <label htmlFor="link-url" className="text-sm font-medium">URL</label>
-                <Input id="link-url" type="url" value={linkFormValues.url} onChange={(e) => {
-                  setLinkFormValues((p) => ({ ...p, url: e.target.value }));
-                  setLinkErrors((p) => ({ ...p, url: undefined, form: undefined }));
-                }} />
+                <label htmlFor="link-url" className="text-sm font-medium">
+                  URL
+                </label>
+                <Input
+                  id="link-url"
+                  type="url"
+                  value={linkFormValues.url}
+                  onChange={(e) => {
+                    setLinkFormValues((p) => ({ ...p, url: e.target.value }));
+                    setLinkErrors((p) => ({ ...p, url: undefined, form: undefined }));
+                  }}
+                />
                 <FormErrorText message={linkErrors.url} />
               </div>
               {linkErrors.form ? (
-                <p className="bg-destructive/10 text-destructive rounded-md border border-destructive/30 px-3 py-2 text-sm">{linkErrors.form}</p>
+                <p className="bg-destructive/10 text-destructive border-destructive/30 rounded-md border px-3 py-2 text-sm">
+                  {linkErrors.form}
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -1178,7 +1627,9 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
             : "This action cannot be undone."
         }
         isDeleting={isDeleting}
-        onConfirm={() => { void handleDeleteConfirm(); }}
+        onConfirm={() => {
+          void handleDeleteConfirm();
+        }}
       />
     </DashboardContext.Provider>
   );

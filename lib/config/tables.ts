@@ -8,7 +8,7 @@
  * - prefix: 'client-acme' → tables: client-acme-users, client-acme-clients, etc.
  */
 
-const PREFIX = process.env.NEXT_PUBLIC_TABLE_PREFIX || 'dev-home';
+const PREFIX = process.env.NEXT_PUBLIC_TABLE_PREFIX || "dev-home";
 
 export const TABLES = {
   users: `${PREFIX}-users`,
@@ -20,7 +20,7 @@ export const TABLES = {
 } as const;
 
 export const STORAGE_BUCKETS = {
-  files: 'dev-home-files', // Use prefix for multiple instances if needed
+  files: "dev-home-files", // Use prefix for multiple instances if needed
 } as const;
 
 export type TableNames = typeof TABLES;

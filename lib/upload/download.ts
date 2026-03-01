@@ -1,14 +1,14 @@
-/**
- * File download/view utilities (stub for removed upload module)
- * TODO: Implement proper file handling with Supabase Storage
- */
+import { createSignedUrl } from "@/lib/supabase/queries";
 
-export function viewFile(_fileId: string): void {
-  // TODO: Implement file viewing with Supabase Storage
-  console.warn("viewFile not yet implemented for Supabase Storage");
+export async function viewFile(storagePath: string): Promise<void> {
+  const url = await createSignedUrl(storagePath);
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function downloadFile(_fileId: string, _filename: string): void {
-  // TODO: Implement file download with Supabase Storage
-  console.warn("downloadFile not yet implemented for Supabase Storage");
+export async function downloadFile(storagePath: string, filename: string): Promise<void> {
+  const url = await createSignedUrl(storagePath);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
 }

@@ -71,6 +71,7 @@ export interface FileItem {
   projectId: string | null;
   codebaseId: string | null;
   filename: string;
+  storagePath: string;
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
@@ -140,4 +141,3 @@ export interface LinkListQueryParams extends ListQueryParams {
   projectId?: string;
   codebaseId?: string;
 }
-

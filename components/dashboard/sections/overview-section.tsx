@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Code, Copy, ExternalLink, FolderKanban, Link2, Plus, Users } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ChevronLeft,
+  ChevronRight,
+  Code,
+  Copy,
+  ExternalLink,
+  FolderKanban,
+  Link2,
+  Plus,
+  Users,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -25,7 +30,10 @@ import type { FileItem, LinkItem } from "@/types/domain";
 // Reusable scrollable tabs wrapper
 // ---------------------------------------------------------------------------
 
-function ScrollableTabs({ items, children }: {
+function ScrollableTabs({
+  items,
+  children,
+}: {
   items: { id: string; label: string }[];
   children: React.ReactNode;
 }) {
@@ -74,7 +82,7 @@ function ScrollableTabs({ items, children }: {
             <ChevronLeft className="size-4" />
           </Button>
         )}
-        <div ref={scrollRef} className="overflow-x-auto scrollbar-hide">
+        <div ref={scrollRef} className="scrollbar-hide overflow-x-auto">
           <TabsList className="w-max">
             {items.map((item) => (
               <TabsTrigger key={item.id} value={item.id} className="cursor-pointer">
@@ -160,7 +168,11 @@ function CodebaseLinksCard({ links }: { links: LinkItem[] }) {
       if (!link.projectId) continue;
       let group = map.get(link.projectId);
       if (!group) {
-        group = { projectId: link.projectId, projectName: link.projectName ?? "Unknown", links: [] };
+        group = {
+          projectId: link.projectId,
+          projectName: link.projectName ?? "Unknown",
+          links: [],
+        };
         map.set(link.projectId, group);
       }
       group.links.push(link);
@@ -183,7 +195,9 @@ function CodebaseLinksCard({ links }: { links: LinkItem[] }) {
           <p className="text-muted-foreground text-sm">No codebase-level links.</p>
         ) : (
           <Tabs defaultValue={projectGroups[0].projectId}>
-            <ScrollableTabs items={projectGroups.map((g) => ({ id: g.projectId, label: g.projectName }))}>
+            <ScrollableTabs
+              items={projectGroups.map((g) => ({ id: g.projectId, label: g.projectName }))}
+            >
               {projectGroups.map((group) => (
                 <TabsContent key={group.projectId} value={group.projectId}>
                   <LinkList
@@ -206,23 +220,23 @@ function CodebaseLinksCard({ links }: { links: LinkItem[] }) {
 // ---------------------------------------------------------------------------
 
 function ClientTabContent({ clientId }: { clientId: string }) {
-  const fetchLinks = useCallback(
-    async (id: string) => {
-      const result = await listLinks({ all: true, clientId: id });
-      return result.items;
-    },
-    [],
-  );
-  const fetchFiles = useCallback(
-    async (id: string) => {
-      const result = await listFiles({ all: true, clientId: id });
-      return result.items;
-    },
-    [],
-  );
+  const fetchLinks = useCallback(async (id: string) => {
+    const result = await listLinks({ all: true, clientId: id });
+    return result.items;
+  }, []);
+  const fetchFiles = useCallback(async (id: string) => {
+    const result = await listFiles({ all: true, clientId: id });
+    return result.items;
+  }, []);
 
-  const { data: links, isLoading: linksLoading } = useCancellableFetch<LinkItem[]>(clientId, fetchLinks);
-  const { data: files, isLoading: filesLoading } = useCancellableFetch<FileItem[]>(clientId, fetchFiles);
+  const { data: links, isLoading: linksLoading } = useCancellableFetch<LinkItem[]>(
+    clientId,
+    fetchLinks,
+  );
+  const { data: files, isLoading: filesLoading } = useCancellableFetch<FileItem[]>(
+    clientId,
+    fetchFiles,
+  );
 
   const { clientLinks, projectLinks, codebaseLinks } = useMemo(() => {
     const client: LinkItem[] = [];
@@ -261,7 +275,11 @@ function ClientTabContent({ clientId }: { clientId: string }) {
           <CardTitle className="text-sm font-medium">Project</CardTitle>
         </CardHeader>
         <CardContent>
-          <LinkList links={projectLinks} emptyMessage="No project-level links." getLabel={(l) => joinLabels(l.projectName, l.title)} />
+          <LinkList
+            links={projectLinks}
+            emptyMessage="No project-level links."
+            getLabel={(l) => joinLabels(l.projectName, l.title)}
+          />
         </CardContent>
       </Card>
 
@@ -270,18 +288,26 @@ function ClientTabContent({ clientId }: { clientId: string }) {
           <CardTitle className="text-sm font-medium">Client</CardTitle>
         </CardHeader>
         <CardContent>
-          <LinkList links={clientLinks} emptyMessage="No client-level links." getLabel={(l) => l.title} />
+          <LinkList
+            links={clientLinks}
+            emptyMessage="No client-level links."
+            getLabel={(l) => l.title}
+          />
           {(files ?? []).length > 0 && (
             <>
               <div className="my-3 border-t" />
-              <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">Files</p>
+              <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+                Files
+              </p>
               <ul className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                 {(files ?? []).map((file) => (
                   <li key={file.id} className="flex min-w-0 items-center gap-1 border-b py-2">
                     <span className="min-w-0 flex-1 truncate text-sm">{file.filename}</span>
                     <button
                       type="button"
-                      onClick={() => viewFile(file.id)}
+                      onClick={() => {
+                        void viewFile(file.storagePath);
+                      }}
                       className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
                       aria-label={`View ${file.filename}`}
                     >

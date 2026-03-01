@@ -19,7 +19,9 @@ export function CodebasesSection() {
   const {
     codebases,
     clientOptions,
+    clientOptionsLoading,
     cbFilterProjectOptions,
+    cbFilterProjectLoading,
     loadCbFilterProjectDropdown,
     openCreateCodebaseSheet,
     openUpdateCodebaseSheet,
@@ -45,6 +47,7 @@ export function CodebasesSection() {
             loadCbFilterProjectDropdown(clientId).catch(() => {});
           }}
           options={clientOptions}
+          loading={clientOptionsLoading}
           placeholder="Filter by client"
           allLabel="All clients"
         />
@@ -52,6 +55,7 @@ export function CodebasesSection() {
           value={codebases.filters.projectId}
           onValueChange={(projectId) => codebases.setFilters({ ...codebases.filters, projectId })}
           options={cbFilterProjectOptions}
+          loading={cbFilterProjectLoading}
           placeholder="Filter by project"
           allLabel="All projects"
           disabled={!codebases.filters.clientId}
@@ -79,7 +83,9 @@ export function CodebasesSection() {
             ) : (
               codebases.items.map((codebase) => (
                 <TableRow key={codebase.id}>
-                  <TableCell className="font-medium">{codebase.projectName} - {codebase.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {codebase.projectName} - {codebase.name}
+                  </TableCell>
                   <TableCell>{codebase.clientName}</TableCell>
                   <TableCell>{codebase.projectName}</TableCell>
                   <TableCell className="text-muted-foreground hidden max-w-[280px] truncate lg:table-cell">
@@ -100,7 +106,12 @@ export function CodebasesSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={codebases.meta} onPageChange={codebases.setPage} pageSize={codebases.pageSize} onPageSizeChange={codebases.setPageSize} />
+      <ResourcePagination
+        meta={codebases.meta}
+        onPageChange={codebases.setPage}
+        pageSize={codebases.pageSize}
+        onPageSizeChange={codebases.setPageSize}
+      />
     </div>
   );
 }

@@ -21,13 +21,17 @@ const PASSWORD_FIELDS = ["currentPassword", "newPassword", "confirmPassword"] as
 
 export function SettingsSection({ user }: SettingsSectionProps) {
   const [name, setName] = useState(user.name ?? "");
-  const [profileErrors, setProfileErrors] = useState<FormErrorMap<(typeof PROFILE_FIELDS)[number]>>({});
+  const [profileErrors, setProfileErrors] = useState<FormErrorMap<(typeof PROFILE_FIELDS)[number]>>(
+    {},
+  );
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<FormErrorMap<(typeof PASSWORD_FIELDS)[number]>>({});
+  const [passwordErrors, setPasswordErrors] = useState<
+    FormErrorMap<(typeof PASSWORD_FIELDS)[number]>
+  >({});
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
@@ -52,7 +56,12 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       }
       toast.success("Profile updated successfully.");
     } catch (error) {
-      showRequestError(error, PROFILE_FIELDS, setProfileErrors, "Unable to update profile right now.");
+      showRequestError(
+        error,
+        PROFILE_FIELDS,
+        setProfileErrors,
+        "Unable to update profile right now.",
+      );
     } finally {
       setIsProfileSubmitting(false);
     }
@@ -89,7 +98,12 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      showRequestError(error, PASSWORD_FIELDS, setPasswordErrors, "Unable to change password right now.");
+      showRequestError(
+        error,
+        PASSWORD_FIELDS,
+        setPasswordErrors,
+        "Unable to change password right now.",
+      );
     } finally {
       setIsPasswordSubmitting(false);
     }
@@ -134,7 +148,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               <FormErrorText message={profileErrors.name} />
             </div>
             {profileErrors.form ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
                 {profileErrors.form}
               </p>
             ) : null}
@@ -215,7 +229,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               <FormErrorText message={passwordErrors.confirmPassword} />
             </div>
             {passwordErrors.form ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
                 {passwordErrors.form}
               </p>
             ) : null}

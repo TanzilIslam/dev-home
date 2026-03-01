@@ -14,16 +14,14 @@ import { ResourceToolbar } from "@/components/dashboard/resource-toolbar";
 import { FilterBar, FilterSelect } from "@/components/dashboard/filter-bar";
 import { ResourceActions } from "@/components/dashboard/resource-actions";
 import { TableStateRow } from "@/components/dashboard/table-state-row";
-import {
-  PROJECT_STATUS_OPTIONS,
-  getLabelByValue,
-} from "@/lib/constants/domain";
+import { PROJECT_STATUS_OPTIONS, getLabelByValue } from "@/lib/constants/domain";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
 
 export function ProjectsSection() {
   const {
     projects,
     clientOptions,
+    clientOptionsLoading,
     openCreateProjectSheet,
     openUpdateProjectSheet,
     openDeleteDialog,
@@ -45,6 +43,7 @@ export function ProjectsSection() {
           value={projects.filters.clientId}
           onValueChange={(clientId) => projects.setFilters({ clientId })}
           options={clientOptions}
+          loading={clientOptionsLoading}
           placeholder="Filter by client"
           allLabel="All clients"
         />
@@ -104,7 +103,12 @@ export function ProjectsSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={projects.meta} onPageChange={projects.setPage} pageSize={projects.pageSize} onPageSizeChange={projects.setPageSize} />
+      <ResourcePagination
+        meta={projects.meta}
+        onPageChange={projects.setPage}
+        pageSize={projects.pageSize}
+        onPageSizeChange={projects.setPageSize}
+      />
     </div>
   );
 }

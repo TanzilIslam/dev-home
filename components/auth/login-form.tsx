@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
+import { signIn } from "@/lib/supabase/queries";
 import { loginSchema } from "@/lib/auth/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,7 +85,7 @@ export function LoginForm({ serverError }: LoginFormProps) {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await signIn({
         email: parsed.data.email,
         password: parsed.data.password,
       });
@@ -99,7 +99,6 @@ export function LoginForm({ serverError }: LoginFormProps) {
 
       toast.success("Logged in successfully.");
       router.push("/dashboard");
-      router.refresh();
     } catch {
       const message = "Unable to log in right now.";
       setErrors({ form: message });
@@ -124,9 +123,7 @@ export function LoginForm({ serverError }: LoginFormProps) {
           aria-invalid={errors.email ? true : undefined}
           onChange={() => clearFieldError("email")}
         />
-        {errors.email ? (
-          <p className="text-sm text-destructive">{errors.email}</p>
-        ) : null}
+        {errors.email ? <p className="text-destructive text-sm">{errors.email}</p> : null}
       </div>
       <div className="space-y-2">
         <label htmlFor="password" className="text-sm font-medium">
@@ -140,12 +137,10 @@ export function LoginForm({ serverError }: LoginFormProps) {
           aria-invalid={errors.password ? true : undefined}
           onChange={() => clearFieldError("password")}
         />
-        {errors.password ? (
-          <p className="text-sm text-destructive">{errors.password}</p>
-        ) : null}
+        {errors.password ? <p className="text-destructive text-sm">{errors.password}</p> : null}
       </div>
       {errors.form ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
           {errors.form}
         </p>
       ) : null}

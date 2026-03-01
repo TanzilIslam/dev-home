@@ -2,12 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  uploadFile,
-  listFiles,
-  deleteFileRecord,
-  SupabaseError,
-} from "@/lib/supabase/queries";
+import { uploadFile, listFiles, deleteFileRecord, SupabaseError } from "@/lib/supabase/queries";
+import { MAX_FILE_SIZE } from "@/lib/upload/constants";
 import type { FileItem } from "@/types/domain";
 
 type EntityScope = {
@@ -40,10 +36,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
     };
   }, []);
 
-  const hasScope =
-    Boolean(scopeClientId) ||
-    Boolean(scopeProjectId) ||
-    Boolean(scopeCodebaseId);
+  const hasScope = Boolean(scopeClientId) || Boolean(scopeProjectId) || Boolean(scopeCodebaseId);
 
   const loadFiles = useCallback(async () => {
     if (!hasScope) {
@@ -80,7 +73,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
 
   const upload = useCallback(
     async (file: File) => {
-      const effectiveMaxSize = maxSize ?? 4 * 1024 * 1024;
+      const effectiveMaxSize = maxSize ?? MAX_FILE_SIZE;
       if (file.size > effectiveMaxSize) {
         toast.error(
           `File exceeds maximum size of ${Math.round(effectiveMaxSize / (1024 * 1024))}MB.`,
@@ -110,9 +103,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         }
       } catch (error) {
         const message =
-          error instanceof SupabaseError
-            ? error.message
-            : "Unable to upload file right now.";
+          error instanceof SupabaseError ? error.message : "Unable to upload file right now.";
         toast.error(message);
       } finally {
         if (mountedRef.current) {
@@ -132,9 +123,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       }
     } catch (error) {
       const message =
-        error instanceof SupabaseError
-          ? error.message
-          : "Unable to delete file right now.";
+        error instanceof SupabaseError ? error.message : "Unable to delete file right now.";
       toast.error(message);
     }
   }, []);

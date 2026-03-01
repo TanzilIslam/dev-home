@@ -33,12 +33,7 @@ export type ProjectField = "clientId" | "name" | "description" | "status";
 
 export type CodebaseField = "projectId" | "name" | "description";
 
-export type LinkField =
-  | "clientId"
-  | "projectId"
-  | "codebaseId"
-  | "title"
-  | "url";
+export type LinkField = "clientId" | "projectId" | "codebaseId" | "title" | "url";
 
 // ---------------------------------------------------------------------------
 // Composite state types
@@ -87,11 +82,7 @@ export type DashboardContextValue = {
   // Delete dialog
   deleteState: DeleteState;
   isDeleting: boolean;
-  openDeleteDialog: (
-    entity: DashboardEntity,
-    id: string,
-    label: string,
-  ) => void;
+  openDeleteDialog: (entity: DashboardEntity, id: string, label: string) => void;
   closeDeleteDialog: (open: boolean) => void;
   handleDeleteConfirm: () => void;
 
@@ -99,36 +90,27 @@ export type DashboardContextValue = {
   clientFormValues: ClientFormValues;
   setClientFormValues: React.Dispatch<React.SetStateAction<ClientFormValues>>;
   clientErrors: FormErrorMap<ClientField>;
-  setClientErrors: React.Dispatch<
-    React.SetStateAction<FormErrorMap<ClientField>>
-  >;
+  setClientErrors: React.Dispatch<React.SetStateAction<FormErrorMap<ClientField>>>;
   openCreateClientSheet: () => void;
   openUpdateClientSheet: (client: ClientItem) => void;
 
   // Project form
   projectFormValues: ProjectFormValues;
-  setProjectFormValues: React.Dispatch<
-    React.SetStateAction<ProjectFormValues>
-  >;
+  setProjectFormValues: React.Dispatch<React.SetStateAction<ProjectFormValues>>;
   projectErrors: FormErrorMap<ProjectField>;
-  setProjectErrors: React.Dispatch<
-    React.SetStateAction<FormErrorMap<ProjectField>>
-  >;
+  setProjectErrors: React.Dispatch<React.SetStateAction<FormErrorMap<ProjectField>>>;
   openCreateProjectSheet: () => void;
   openUpdateProjectSheet: (project: ProjectItem) => void;
 
   // Codebase form
   codebaseFormValues: CodebaseFormValues;
-  setCodebaseFormValues: React.Dispatch<
-    React.SetStateAction<CodebaseFormValues>
-  >;
+  setCodebaseFormValues: React.Dispatch<React.SetStateAction<CodebaseFormValues>>;
   codebaseErrors: FormErrorMap<CodebaseField>;
-  setCodebaseErrors: React.Dispatch<
-    React.SetStateAction<FormErrorMap<CodebaseField>>
-  >;
+  setCodebaseErrors: React.Dispatch<React.SetStateAction<FormErrorMap<CodebaseField>>>;
   codebaseFormClientId: string;
   setCodebaseFormClientId: React.Dispatch<React.SetStateAction<string>>;
   codebaseFormProjectOptions: SelectOption[];
+  codebaseFormProjectLoading: boolean;
   loadCbFormProjectDropdown: (clientId?: string) => Promise<void>;
   openCreateCodebaseSheet: () => void;
   openUpdateCodebaseSheet: (codebase: CodebaseItem) => void;
@@ -137,25 +119,29 @@ export type DashboardContextValue = {
   linkFormValues: LinkFormValues;
   setLinkFormValues: React.Dispatch<React.SetStateAction<LinkFormValues>>;
   linkErrors: FormErrorMap<LinkField>;
-  setLinkErrors: React.Dispatch<
-    React.SetStateAction<FormErrorMap<LinkField>>
-  >;
+  setLinkErrors: React.Dispatch<React.SetStateAction<FormErrorMap<LinkField>>>;
   linkFormProjectOptions: SelectOption[];
+  linkFormProjectLoading: boolean;
   loadLinkFormProjectDropdown: (clientId?: string) => Promise<void>;
   linkFormCodebaseOptions: SelectOption[];
+  linkFormCodebaseLoading: boolean;
   loadLinkFormCodebaseDropdown: (projectId?: string) => Promise<void>;
   openCreateLinkSheet: () => void;
   openUpdateLinkSheet: (link: LinkItem) => void;
 
   // Reference dropdown options
   clientOptions: SelectOption[];
+  clientOptionsLoading: boolean;
   projectOptions: SelectOption[];
   codebaseOptions: SelectOption[];
   cbFilterProjectOptions: SelectOption[];
+  cbFilterProjectLoading: boolean;
   loadCbFilterProjectDropdown: (clientId?: string) => Promise<void>;
   linkFilterProjectOptions: SelectOption[];
+  linkFilterProjectLoading: boolean;
   loadLinkFilterProjectDropdown: (clientId?: string) => Promise<void>;
   linkFilterCodebaseOptions: SelectOption[];
+  linkFilterCodebaseLoading: boolean;
   loadLinkFilterCodebaseDropdown: (projectId?: string) => Promise<void>;
 };
 
@@ -163,9 +149,7 @@ export type DashboardContextValue = {
 // Context & hook
 // ---------------------------------------------------------------------------
 
-export const DashboardContext = createContext<DashboardContextValue | null>(
-  null,
-);
+export const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 export function useDashboard(): DashboardContextValue {
   const ctx = useContext(DashboardContext);

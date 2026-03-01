@@ -20,11 +20,13 @@ type ResourcePaginationProps = {
   onPageSizeChange: (size: number) => void;
 };
 
-export function ResourcePagination({ meta, onPageChange, pageSize, onPageSizeChange }: ResourcePaginationProps) {
-  const pageLabel =
-    meta.totalPages === 0
-      ? "No pages"
-      : `Page ${meta.page} of ${meta.totalPages}`;
+export function ResourcePagination({
+  meta,
+  onPageChange,
+  pageSize,
+  onPageSizeChange,
+}: ResourcePaginationProps) {
+  const pageLabel = meta.totalPages === 0 ? "No pages" : `Page ${meta.page} of ${meta.totalPages}`;
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -33,10 +35,7 @@ export function ResourcePagination({ meta, onPageChange, pageSize, onPageSizeCha
         <span className="ml-1">({meta.total} total items)</span>
       </p>
       <div className="flex items-center gap-2">
-        <Select
-          value={String(pageSize)}
-          onValueChange={(value) => onPageSizeChange(Number(value))}
-        >
+        <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
           <SelectTrigger className="w-35" aria-label="Rows per page">
             <SelectValue placeholder="Rows" />
           </SelectTrigger>

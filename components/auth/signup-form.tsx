@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
+import { signUp } from "@/lib/supabase/queries";
 import { signupSchema } from "@/lib/auth/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,14 +88,10 @@ export function SignupForm({ serverError }: SignupFormProps) {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error } = await signUp({
         email: parsed.data.email,
         password: parsed.data.password,
-        options: {
-          data: {
-            name: parsed.data.name,
-          },
-        },
+        name: parsed.data.name,
       });
 
       if (error) {
@@ -107,7 +103,6 @@ export function SignupForm({ serverError }: SignupFormProps) {
 
       toast.success("Account created successfully. Please log in.");
       router.push("/login");
-      router.refresh();
     } catch {
       const message = "Unable to create your account right now.";
       setErrors({ form: message });
@@ -132,9 +127,7 @@ export function SignupForm({ serverError }: SignupFormProps) {
           aria-invalid={errors.name ? true : undefined}
           onChange={() => clearFieldError("name")}
         />
-        {errors.name ? (
-          <p className="text-sm text-destructive">{errors.name}</p>
-        ) : null}
+        {errors.name ? <p className="text-destructive text-sm">{errors.name}</p> : null}
       </div>
       <div className="space-y-2">
         <label htmlFor="email" className="text-sm font-medium">
@@ -149,9 +142,7 @@ export function SignupForm({ serverError }: SignupFormProps) {
           aria-invalid={errors.email ? true : undefined}
           onChange={() => clearFieldError("email")}
         />
-        {errors.email ? (
-          <p className="text-sm text-destructive">{errors.email}</p>
-        ) : null}
+        {errors.email ? <p className="text-destructive text-sm">{errors.email}</p> : null}
       </div>
       <div className="space-y-2">
         <label htmlFor="password" className="text-sm font-medium">
@@ -165,12 +156,10 @@ export function SignupForm({ serverError }: SignupFormProps) {
           aria-invalid={errors.password ? true : undefined}
           onChange={() => clearFieldError("password")}
         />
-        {errors.password ? (
-          <p className="text-sm text-destructive">{errors.password}</p>
-        ) : null}
+        {errors.password ? <p className="text-destructive text-sm">{errors.password}</p> : null}
       </div>
       {errors.form ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
           {errors.form}
         </p>
       ) : null}

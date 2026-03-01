@@ -50,9 +50,7 @@ export function usePaginatedList<TItem, TFilters extends object>(
     pageSize: options.initialPageSize ?? DEFAULT_PAGE_SIZE,
   });
   const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(
-    options.initialPageSize ?? DEFAULT_PAGE_SIZE,
-  );
+  const [pageSize, setPageSize] = useState(options.initialPageSize ?? DEFAULT_PAGE_SIZE);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TFilters>(options.initialFilters);
   const [isLoading, setIsLoading] = useState(false);

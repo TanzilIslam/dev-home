@@ -54,8 +54,8 @@ export default function Home() {
         </h1>
 
         <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed md:text-lg">
-          Organize your clients, projects, codebases, and links with a clean
-          dashboard built for developers.
+          Organize your clients, projects, codebases, and links with a clean dashboard built for
+          developers.
         </p>
 
         <div className="mt-8 flex items-center gap-3">

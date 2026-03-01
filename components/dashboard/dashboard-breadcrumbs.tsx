@@ -66,10 +66,7 @@ export function DashboardBreadcrumbs() {
             <BreadcrumbItem>
               {isClientExpanded ? (
                 <BreadcrumbLink asChild>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedClient(null, null)}
-                  >
+                  <button type="button" onClick={() => setExpandedClient(null, null)}>
                     {sectionLabel}
                   </button>
                 </BreadcrumbLink>

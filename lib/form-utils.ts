@@ -34,10 +34,7 @@ export function toValidationErrors<TFields extends string>(
   error: ZodError,
 ): FormErrorMap<TFields> {
   const flattened = error.flatten();
-  const mapped = firstFieldErrors(
-    fields,
-    flattened.fieldErrors as Record<string, string[]>,
-  );
+  const mapped = firstFieldErrors(fields, flattened.fieldErrors as Record<string, string[]>);
 
   if (flattened.formErrors[0]) {
     mapped.form = flattened.formErrors[0];

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  LayoutDashboard,
-  Users,
-  FolderKanban,
-  Code,
-  Link,
-} from "lucide-react";
+import { LayoutDashboard, Users, FolderKanban, Code, Link } from "lucide-react";
 import { useAppStore, type DashboardSection } from "@/store/use-app-store";
 import {
   Sidebar,
@@ -21,7 +15,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-
 
 const NAV_ITEMS: {
   label: string;
@@ -57,7 +50,7 @@ export function AppSidebar() {
           <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
             Dev Home
           </span>
-          <span className="text-lg font-semibold hidden group-data-[collapsible=icon]:inline">
+          <span className="hidden text-lg font-semibold group-data-[collapsible=icon]:inline">
             DH
           </span>
         </div>

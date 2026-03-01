@@ -1,6 +1,3 @@
-import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 import { DashboardApp } from "@/components/dashboard/dashboard-app";
 import type { DashboardSection } from "@/store/use-app-store";
 
@@ -18,26 +15,10 @@ type DashboardPageProps = {
 };
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
   const { section } = await params;
   const slug = section?.[0];
+  const initialSection: DashboardSection =
+    slug && VALID_SECTIONS.has(slug) ? (slug as DashboardSection) : "overview";
 
-  if (slug && !VALID_SECTIONS.has(slug)) {
-    redirect("/dashboard");
-  }
-
-  const initialSection = (slug as DashboardSection) ?? "overview";
-
-  return (
-    <DashboardApp
-      user={{ email: user.email ?? "", name: (user.user_metadata?.name as string) ?? null }}
-      initialSection={initialSection}
-    />
-  );
+  return <DashboardApp initialSection={initialSection} />;
 }

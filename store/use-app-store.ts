@@ -46,6 +46,5 @@ export const useAppStore = create<AppStore>((set) => ({
   },
   expandedClientId: null,
   expandedClientName: null,
-  setExpandedClient: (id, name) =>
-    set({ expandedClientId: id, expandedClientName: name }),
+  setExpandedClient: (id, name) => set({ expandedClientId: id, expandedClientName: name }),
 }));

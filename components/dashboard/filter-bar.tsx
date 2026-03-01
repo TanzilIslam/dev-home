@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import type { SelectOption } from "@/types/dashboard";
 
 type FilterSelectProps = {
@@ -17,6 +18,7 @@ type FilterSelectProps = {
   allLabel: string;
   triggerClassName?: string;
   disabled?: boolean;
+  loading?: boolean;
 };
 
 export function FilterSelect({
@@ -27,14 +29,16 @@ export function FilterSelect({
   allLabel,
   triggerClassName = "w-full sm:w-[260px]",
   disabled = false,
+  loading = false,
 }: FilterSelectProps) {
   return (
     <Select
       value={value ?? "__all"}
       onValueChange={(v) => onValueChange(v === "__all" ? undefined : v)}
-      disabled={disabled}
+      disabled={disabled || loading}
     >
       <SelectTrigger className={triggerClassName}>
+        {loading ? <Spinner className="size-3.5" /> : null}
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -54,12 +58,13 @@ type FilterBarProps = {
   className?: string;
 };
 
-export function FilterBar({ children, className = "flex flex-col gap-2 sm:flex-row sm:items-center" }: FilterBarProps) {
+export function FilterBar({
+  children,
+  className = "flex flex-col gap-2 sm:flex-row sm:items-center",
+}: FilterBarProps) {
   return (
     <div className="rounded-lg border p-3">
-      <div className={className}>
-        {children}
-      </div>
+      <div className={className}>{children}</div>
     </div>
   );
 }

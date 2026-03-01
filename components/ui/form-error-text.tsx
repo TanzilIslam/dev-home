@@ -1,4 +1,4 @@
 export function FormErrorText({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="text-sm text-destructive">{message}</p>;
+  return <p className="text-destructive text-sm">{message}</p>;
 }

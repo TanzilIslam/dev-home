@@ -4,10 +4,7 @@ import { useRef } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  formatFileSize,
-  MAX_FILE_SIZE,
-} from "@/lib/upload/constants";
+import { formatFileSize, MAX_FILE_SIZE } from "@/lib/upload/constants";
 
 type FileUploadInputProps = {
   accept?: string;

@@ -8,20 +8,24 @@ type DropdownFetcher = (params: Record<string, unknown>) => Promise<DropdownList
 
 export function useDropdownLoader(fetcher: DropdownFetcher) {
   const [options, setOptions] = useState<SelectOption[]>([]);
+  const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
   const load = useCallback(
     async (params?: Record<string, unknown>) => {
       const requestId = ++requestIdRef.current;
+      setLoading(true);
       try {
         const response = await fetcher({ all: true, ...params });
         if (requestId !== requestIdRef.current) return;
-        setOptions(
-          response.items.map((item) => ({ id: item.id, label: item.name })),
-        );
+        setOptions(response.items.map((item) => ({ id: item.id, label: item.name })));
       } catch {
         if (requestId !== requestIdRef.current) return;
         setOptions([]);
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [fetcher],
@@ -30,7 +34,8 @@ export function useDropdownLoader(fetcher: DropdownFetcher) {
   const clear = useCallback(() => {
     ++requestIdRef.current;
     setOptions([]);
+    setLoading(false);
   }, []);
 
-  return { options, load, clear } as const;
+  return { options, loading, load, clear } as const;
 }

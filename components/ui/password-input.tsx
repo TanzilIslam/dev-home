@@ -27,11 +27,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           disabled={disabled}
           className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 disabled:pointer-events-none disabled:opacity-50"
         >
-          {showPassword ? (
-            <EyeOffIcon className="size-4" />
-          ) : (
-            <EyeIcon className="size-4" />
-          )}
+          {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
         </button>
       </div>
     );

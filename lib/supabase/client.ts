@@ -4,15 +4,15 @@
  * Used throughout the application for database and auth operations
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Missing Supabase environment variables. ' +
-    'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env'
+    "Missing Supabase environment variables. " +
+      "Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env",
   );
 }
 
@@ -28,28 +28,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
   db: {
-    schema: 'public',
+    schema: "public",
   },
 });
-
-/**
- * Get current authenticated user
- * @returns User object if authenticated, null otherwise
- */
-export async function getCurrentUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}
-
-/**
- * Get current session
- * @returns Session object if valid, null otherwise
- */
-export async function getCurrentSession() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session;
-}

@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { SignupForm } from "@/components/auth/signup-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SignupPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -28,7 +22,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         </CardHeader>
         <CardContent>
           <SignupForm serverError={error} />
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-4 text-sm">
             Already have an account?{" "}
             <Link href="/login" className="text-foreground underline">
               Log in

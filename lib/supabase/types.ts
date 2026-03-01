@@ -33,7 +33,7 @@ export interface Project {
   client_id: string;
   name: string;
   description: string | null;
-  status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+  status: "ACTIVE" | "PAUSED" | "ARCHIVED";
   created_at: string;
   updated_at: string;
 }

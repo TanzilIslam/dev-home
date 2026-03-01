@@ -11,8 +11,8 @@ type FileListProps = {
   files: FileItem[];
   isLoading?: boolean;
   onDelete?: (fileId: string) => Promise<void>;
-  onDownload?: (fileId: string, filename: string) => void;
-  onView?: (fileId: string) => void;
+  onDownload?: (storagePath: string, filename: string) => Promise<void>;
+  onView?: (storagePath: string) => Promise<void>;
   readOnly?: boolean;
 };
 
@@ -46,9 +46,7 @@ export function FileList({
   }
 
   if (files.length === 0) {
-    return (
-      <p className="text-muted-foreground py-2 text-sm">No files attached.</p>
-    );
+    return <p className="text-muted-foreground py-2 text-sm">No files attached.</p>;
   }
 
   return (
@@ -62,9 +60,7 @@ export function FileList({
             <FileText className="text-muted-foreground size-4 shrink-0" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{file.filename}</p>
-              <p className="text-muted-foreground text-xs">
-                {formatFileSize(file.sizeBytes)}
-              </p>
+              <p className="text-muted-foreground text-xs">{formatFileSize(file.sizeBytes)}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -74,7 +70,9 @@ export function FileList({
                 variant="ghost"
                 size="sm"
                 className="size-7 p-0"
-                onClick={() => onView(file.id)}
+                onClick={() => {
+                  void onView(file.storagePath);
+                }}
                 aria-label={`View ${file.filename}`}
               >
                 <ExternalLink className="size-4" />
@@ -86,7 +84,9 @@ export function FileList({
                 variant="ghost"
                 size="sm"
                 className="size-7 p-0"
-                onClick={() => onDownload(file.id, file.filename)}
+                onClick={() => {
+                  void onDownload(file.storagePath, file.filename);
+                }}
                 aria-label={`Download ${file.filename}`}
               >
                 <Download className="size-4" />

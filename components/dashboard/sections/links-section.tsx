@@ -20,9 +20,12 @@ export function LinksSection() {
   const {
     links,
     clientOptions,
+    clientOptionsLoading,
     linkFilterProjectOptions,
+    linkFilterProjectLoading,
     loadLinkFilterProjectDropdown,
     linkFilterCodebaseOptions,
+    linkFilterCodebaseLoading,
     loadLinkFilterCodebaseDropdown,
     openCreateLinkSheet,
     openUpdateLinkSheet,
@@ -48,6 +51,7 @@ export function LinksSection() {
             loadLinkFilterProjectDropdown(clientId).catch(() => {});
           }}
           options={clientOptions}
+          loading={clientOptionsLoading}
           placeholder="Filter by client"
           allLabel="All clients"
           triggerClassName="w-full lg:w-[260px]"
@@ -59,6 +63,7 @@ export function LinksSection() {
             loadLinkFilterCodebaseDropdown(projectId).catch(() => {});
           }}
           options={linkFilterProjectOptions}
+          loading={linkFilterProjectLoading}
           placeholder="Filter by project"
           allLabel="All projects"
           disabled={!links.filters.clientId}
@@ -70,6 +75,7 @@ export function LinksSection() {
             links.setFilters({ ...links.filters, codebaseId });
           }}
           options={linkFilterCodebaseOptions}
+          loading={linkFilterCodebaseLoading}
           placeholder="Filter by codebase"
           allLabel="All codebases"
           disabled={!links.filters.projectId}
@@ -99,7 +105,9 @@ export function LinksSection() {
             ) : (
               links.items.map((link) => (
                 <TableRow key={link.id}>
-                  <TableCell className="font-medium">{joinLabels(link.projectName, link.codebaseName, link.title)}</TableCell>
+                  <TableCell className="font-medium">
+                    {joinLabels(link.projectName, link.codebaseName, link.title)}
+                  </TableCell>
                   <TableCell className="hidden max-w-70 truncate sm:table-cell">
                     <a
                       href={link.url}
@@ -111,15 +119,9 @@ export function LinksSection() {
                       {link.url}
                     </a>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {link.clientName ?? "-"}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {link.projectName ?? "-"}
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {link.codebaseName ?? "-"}
-                  </TableCell>
+                  <TableCell className="hidden md:table-cell">{link.clientName ?? "-"}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{link.projectName ?? "-"}</TableCell>
+                  <TableCell className="hidden xl:table-cell">{link.codebaseName ?? "-"}</TableCell>
                   <TableCell>
                     <ResourceActions
                       editLabel={`Edit link ${link.title}`}
@@ -135,7 +137,12 @@ export function LinksSection() {
         </Table>
       </div>
 
-      <ResourcePagination meta={links.meta} onPageChange={links.setPage} pageSize={links.pageSize} onPageSizeChange={links.setPageSize} />
+      <ResourcePagination
+        meta={links.meta}
+        onPageChange={links.setPage}
+        pageSize={links.pageSize}
+        onPageSizeChange={links.setPageSize}
+      />
     </div>
   );
 }
