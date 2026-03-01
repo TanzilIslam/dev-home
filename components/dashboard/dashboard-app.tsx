@@ -10,7 +10,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import {
-  ApiRequestError,
+  SupabaseError,
   createClient,
   createCodebase,
   createLink,
@@ -30,7 +30,8 @@ import {
   updateCodebase,
   updateLink,
   updateProject,
-} from "@/lib/api/client";
+} from "@/lib/supabase/queries";
+import { supabase } from "@/lib/supabase/client";
 import {
   ENGAGEMENT_TYPE_OPTIONS,
   PROJECT_STATUS_OPTIONS,
@@ -211,20 +212,63 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // Create wrapper fetchers that include userId from Supabase auth
+  const createListClientsFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listClients(user.id, params.page, params.pageSize, params.q);
+  }, []);
+
+  const createListProjectsFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listProjects(user.id, params.page, params.pageSize, params.q, params.clientId);
+  }, []);
+
+  const createListCodebasesFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listCodebases(user.id, params.page, params.pageSize, params.q, params.clientId, params.projectId);
+  }, []);
+
+  const createListLinksFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listLinks(user.id, params.page, params.pageSize, params.q, params.clientId, params.projectId, params.codebaseId);
+  }, []);
+
+  const createListClientDropdownFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listClientDropdown(user.id, params);
+  }, []);
+
+  const createListProjectDropdownFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listProjectDropdown(user.id, params);
+  }, []);
+
+  const createListCodebaseDropdownFetcher = useCallback(async (params: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new SupabaseError("User not authenticated");
+    return listCodebaseDropdown(user.id, params);
+  }, []);
+
   const [sheetState, setSheetState] = useState<SheetState>(INITIAL_SHEET_STATE);
   const [deleteState, setDeleteState] = useState<DeleteState>(INITIAL_DELETE_STATE);
   const [isSheetSubmitting, setIsSheetSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { options: clientOptions, load: loadClientOptions } = useDropdownLoader(listClientDropdown);
-  const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(listProjectDropdown);
-  const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(listCodebaseDropdown);
-  const { options: codebaseFormProjectOptions, load: loadCbFormPj, clear: clearCbFormPj } = useDropdownLoader(listProjectDropdown);
-  const { options: linkFormProjectOptions, load: loadLinkFormPj, clear: clearLinkFormPj } = useDropdownLoader(listProjectDropdown);
-  const { options: linkFormCodebaseOptions, load: loadLinkFormCb, clear: clearLinkFormCb } = useDropdownLoader(listCodebaseDropdown);
-  const { options: cbFilterProjectOptions, load: loadCbFilterPj, clear: clearCbFilterPj } = useDropdownLoader(listProjectDropdown);
-  const { options: linkFilterProjectOptions, load: loadLinkFilterPj, clear: clearLinkFilterPj } = useDropdownLoader(listProjectDropdown);
-  const { options: linkFilterCodebaseOptions, load: loadLinkFilterCb, clear: clearLinkFilterCb } = useDropdownLoader(listCodebaseDropdown);
+  const { options: clientOptions, load: loadClientOptions } = useDropdownLoader(createListClientDropdownFetcher);
+  const { options: projectOptions, load: loadProjectOptions } = useDropdownLoader(createListProjectDropdownFetcher);
+  const { options: codebaseOptions, load: loadCodebaseOptions } = useDropdownLoader(createListCodebaseDropdownFetcher);
+  const { options: codebaseFormProjectOptions, load: loadCbFormPj, clear: clearCbFormPj } = useDropdownLoader(createListProjectDropdownFetcher);
+  const { options: linkFormProjectOptions, load: loadLinkFormPj, clear: clearLinkFormPj } = useDropdownLoader(createListProjectDropdownFetcher);
+  const { options: linkFormCodebaseOptions, load: loadLinkFormCb, clear: clearLinkFormCb } = useDropdownLoader(createListCodebaseDropdownFetcher);
+  const { options: cbFilterProjectOptions, load: loadCbFilterPj, clear: clearCbFilterPj } = useDropdownLoader(createListProjectDropdownFetcher);
+  const { options: linkFilterProjectOptions, load: loadLinkFilterPj, clear: clearLinkFilterPj } = useDropdownLoader(createListProjectDropdownFetcher);
+  const { options: linkFilterCodebaseOptions, load: loadLinkFilterCb, clear: clearLinkFilterCb } = useDropdownLoader(createListCodebaseDropdownFetcher);
   const clientFileUpload = useFileUpload({
     scope: {
       clientId:
@@ -240,7 +284,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
   const handleListError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       const message =
-        error instanceof ApiRequestError ? error.message : fallbackMessage;
+        error instanceof SupabaseError ? error.message : fallbackMessage;
       const now = Date.now();
 
       if (
@@ -258,19 +302,19 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
   );
 
   const clients = usePaginatedList<ClientItem, Record<string, never>>({
-    fetcher: listClients,
+    fetcher: createListClientsFetcher,
     initialFilters: EMPTY_FILTERS,
     onError: (error) => handleListError(error, "Unable to fetch clients."),
   });
 
   const projects = usePaginatedList<ProjectItem, { clientId?: string }>({
-    fetcher: listProjects,
+    fetcher: createListProjectsFetcher,
     initialFilters: { clientId: undefined },
     onError: (error) => handleListError(error, "Unable to fetch projects."),
   });
 
   const codebases = usePaginatedList<CodebaseItem, { clientId?: string; projectId?: string }>({
-    fetcher: listCodebases,
+    fetcher: createListCodebasesFetcher,
     initialFilters: { clientId: undefined, projectId: undefined },
     onError: (error) => handleListError(error, "Unable to fetch codebases."),
   });
@@ -279,7 +323,7 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     LinkItem,
     { clientId?: string; projectId?: string; codebaseId?: string }
   >({
-    fetcher: listLinks,
+    fetcher: createListLinksFetcher,
     initialFilters: { clientId: undefined, projectId: undefined, codebaseId: undefined },
     onError: (error) => handleListError(error, "Unable to fetch links."),
   });
@@ -560,18 +604,21 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     const id = deleteState.id;
     setIsDeleting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new SupabaseError("User not authenticated");
+
       switch (entity) {
-        case "client": await deleteClient(id); break;
-        case "project": await deleteProject(id); break;
-        case "codebase": await deleteCodebase(id); break;
-        case "link": await deleteLink(id); break;
+        case "client": await deleteClient(id, user.id); break;
+        case "project": await deleteProject(id, user.id); break;
+        case "codebase": await deleteCodebase(id, user.id); break;
+        case "link": await deleteLink(id, user.id); break;
         default: break;
       }
       toast.success(`${getEntityLabel(entity)} deleted successfully.`);
       setDeleteState(INITIAL_DELETE_STATE);
       await reloadAfterMutation(entity, "delete");
     } catch (error) {
-      const message = error instanceof ApiRequestError
+      const message = error instanceof SupabaseError
         ? error.message
         : `Unable to delete ${getEntityLabel(entity).toLowerCase()} right now.`;
       toast.error(message);
@@ -592,11 +639,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     setClientErrors({});
     setIsSheetSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new SupabaseError("User not authenticated");
+
       if (sheetState.mode === "create") {
-        await createClient(parsed.data);
+        await createClient(parsed.data, user.id);
         toast.success("Client created successfully.");
       } else if (sheetState.id) {
-        await updateClient(sheetState.id, parsed.data);
+        await updateClient(sheetState.id, parsed.data, user.id);
         toast.success("Client updated successfully.");
       }
       resetSheetState();
@@ -618,11 +668,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     setProjectErrors({});
     setIsSheetSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new SupabaseError("User not authenticated");
+
       if (sheetState.mode === "create") {
-        await createProject(parsed.data);
+        await createProject(parsed.data, user.id);
         toast.success("Project created successfully.");
       } else if (sheetState.id) {
-        await updateProject(sheetState.id, parsed.data);
+        await updateProject(sheetState.id, parsed.data, user.id);
         toast.success("Project updated successfully.");
       }
       resetSheetState();
@@ -648,11 +701,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     setCodebaseErrors({});
     setIsSheetSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new SupabaseError("User not authenticated");
+
       if (sheetState.mode === "create") {
-        await createCodebase(parsed.data);
+        await createCodebase(parsed.data, user.id);
         toast.success("Codebase created successfully.");
       } else if (sheetState.id) {
-        await updateCodebase(sheetState.id, parsed.data);
+        await updateCodebase(sheetState.id, parsed.data, user.id);
         toast.success("Codebase updated successfully.");
       }
       resetSheetState();
@@ -674,11 +730,14 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
     setLinkErrors({});
     setIsSheetSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new SupabaseError("User not authenticated");
+
       if (sheetState.mode === "create") {
-        await createLink(parsed.data);
+        await createLink(parsed.data, user.id);
         toast.success("Link created successfully.");
       } else if (sheetState.id) {
-        await updateLink(sheetState.id, parsed.data);
+        await updateLink(sheetState.id, parsed.data, user.id);
         toast.success("Link updated successfully.");
       }
       resetSheetState();

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { updateProfile, changePassword } from "@/lib/api/client";
+import { updateProfile, changePassword } from "@/lib/supabase/queries";
 import { profileSchema, changePasswordSchema } from "@/lib/auth/validation";
 import { showRequestError } from "@/lib/form-error-handler";
 import { clearFieldError, toValidationErrors, type FormErrorMap } from "@/lib/form-utils";

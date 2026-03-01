@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
   formatFileSize,
-  DEFAULT_MAX_FILE_SIZE,
+  MAX_FILE_SIZE,
 } from "@/lib/upload/constants";
 
 type FileUploadInputProps = {
@@ -19,7 +19,7 @@ type FileUploadInputProps = {
 
 export function FileUploadInput({
   accept,
-  maxSize = DEFAULT_MAX_FILE_SIZE,
+  maxSize = MAX_FILE_SIZE,
   isUploading = false,
   onFileSelect,
   disabled = false,

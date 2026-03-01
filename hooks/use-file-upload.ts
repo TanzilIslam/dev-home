@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ApiRequestError,
-  deleteFileRecord,
-  listFiles,
   uploadFile,
-} from "@/lib/api/client";
+  listFiles,
+  deleteFileRecord,
+  SupabaseError,
+} from "@/lib/supabase/queries";
 import type { FileItem } from "@/types/domain";
 
 type EntityScope = {
@@ -110,7 +110,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
         }
       } catch (error) {
         const message =
-          error instanceof ApiRequestError
+          error instanceof SupabaseError
             ? error.message
             : "Unable to upload file right now.";
         toast.error(message);
@@ -132,7 +132,7 @@ export function useFileUpload(options: UseFileUploadOptions) {
       }
     } catch (error) {
       const message =
-        error instanceof ApiRequestError
+        error instanceof SupabaseError
           ? error.message
           : "Unable to delete file right now.";
       toast.error(message);

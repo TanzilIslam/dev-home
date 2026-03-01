@@ -15,7 +15,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
 import { useAppStore } from "@/store/use-app-store";
 import { joinLabels } from "@/lib/constants/domain";
-import { listFiles, listLinks } from "@/lib/api/client";
+import { listFiles, listLinks } from "@/lib/supabase/queries";
+import { supabase } from "@/lib/supabase/client";
 import { viewFile } from "@/lib/upload/download";
 import { useCancellableFetch } from "@/hooks/use-cancellable-fetch";
 import type { FileItem, LinkItem } from "@/types/domain";
@@ -206,11 +207,21 @@ function CodebaseLinksCard({ links }: { links: LinkItem[] }) {
 
 function ClientTabContent({ clientId }: { clientId: string }) {
   const fetchLinks = useCallback(
-    (id: string) => listLinks({ clientId: id, all: true }).then((d) => d.items),
+    async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const result = await listLinks(user.id, 1, 1000, undefined, id);
+      return result.items;
+    },
     [],
   );
   const fetchFiles = useCallback(
-    (id: string) => listFiles({ clientId: id, all: true }).then((d) => d.items),
+    async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const result = await listFiles(user.id, 1, 1000, undefined, id);
+      return result.items;
+    },
     [],
   );
 

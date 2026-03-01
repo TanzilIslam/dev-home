@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Code, FolderKanban, Link2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getSession } from "@/lib/auth/server";
 
 const FEATURES = [
   {
@@ -27,9 +26,7 @@ const FEATURES = [
   },
 ];
 
-export default async function Home() {
-  const session = await getSession();
-
+export default function Home() {
   return (
     <div className="relative flex min-h-screen flex-col">
       {/* Header */}
@@ -37,15 +34,9 @@ export default async function Home() {
         <span className="text-lg font-semibold tracking-tight">Dev Home</span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {session ? (
-            <Button asChild size="sm">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-          ) : (
-            <Button asChild size="sm" variant="ghost">
-              <Link href="/login">Log in</Link>
-            </Button>
-          )}
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/login">Log in</Link>
+          </Button>
         </div>
       </header>
 
@@ -68,26 +59,15 @@ export default async function Home() {
         </p>
 
         <div className="mt-8 flex items-center gap-3">
-          {session ? (
-            <Button asChild size="lg">
-              <Link href="/dashboard">
-                Go to Dashboard
-                <ArrowRight className="ml-2 size-4" />
-              </Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild size="lg">
-                <Link href="/signup">
-                  Get Started
-                  <ArrowRight className="ml-2 size-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/login">Log in</Link>
-              </Button>
-            </>
-          )}
+          <Button asChild size="lg">
+            <Link href="/signup">
+              Get Started
+              <ArrowRight className="ml-2 size-4" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/login">Log in</Link>
+          </Button>
         </div>
 
         {/* Features */}

@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { ApiRequestError } from "@/lib/api/client";
+import { SupabaseError } from "@/lib/supabase/queries";
 import { firstFieldErrors, type FormErrorMap } from "@/lib/form-utils";
 
 export function showRequestError<TFields extends string>(
@@ -8,7 +8,7 @@ export function showRequestError<TFields extends string>(
   setErrors: (nextErrors: FormErrorMap<TFields>) => void,
   fallbackMessage: string,
 ) {
-  if (error instanceof ApiRequestError) {
+  if (error instanceof SupabaseError) {
     const mapped = firstFieldErrors(fields, error.fieldErrors);
     setErrors({
       ...mapped,

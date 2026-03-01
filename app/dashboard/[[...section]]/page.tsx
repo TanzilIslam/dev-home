@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import { DashboardApp } from "@/components/dashboard/dashboard-app";
-import { getCurrentUser } from "@/lib/auth/user";
 import type { DashboardSection } from "@/store/use-app-store";
 
 const VALID_SECTIONS = new Set<string>([
@@ -17,7 +18,8 @@ type DashboardPageProps = {
 };
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
-  const user = await getCurrentUser();
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

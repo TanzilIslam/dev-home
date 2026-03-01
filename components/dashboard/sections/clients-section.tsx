@@ -24,7 +24,8 @@ import {
   PROJECT_STATUS_OPTIONS,
   getLabelByValue,
 } from "@/lib/constants/domain";
-import { listFiles, listProjects } from "@/lib/api/client";
+import { listFiles, listProjects } from "@/lib/supabase/queries";
+import { supabase } from "@/lib/supabase/client";
 import { viewFile } from "@/lib/upload/download";
 import { useCancellableFetch } from "@/hooks/use-cancellable-fetch";
 import { FileList } from "@/components/dashboard/file-list";
@@ -43,11 +44,21 @@ export function ClientsSection() {
   const setExpandedClient = useAppStore((s) => s.setExpandedClient);
 
   const fetchProjects = useCallback(
-    (clientId: string) => listProjects({ clientId, all: true }).then((d) => d?.items ?? []),
+    async (clientId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const result = await listProjects(user.id, 1, 1000, undefined, clientId);
+      return result?.items ?? [];
+    },
     [],
   );
   const fetchFiles = useCallback(
-    (clientId: string) => listFiles({ clientId, all: true }).then((d) => d?.items ?? []),
+    async (clientId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const result = await listFiles(user.id, 1, 1000, undefined, clientId);
+      return result?.items ?? [];
+    },
     [],
   );
 

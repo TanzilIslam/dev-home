@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase/client";
 import { signupSchema } from "@/lib/auth/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,32 +88,24 @@ export function SignupForm({ serverError }: SignupFormProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const { error } = await supabase.auth.signUp({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        options: {
+          data: {
+            name: parsed.data.name,
+          },
         },
-        credentials: "include",
-        body: JSON.stringify(parsed.data),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { message?: string }
-        | null;
-
-      const message =
-        payload?.message ??
-        (response.ok
-          ? "Account created successfully. Please log in."
-          : "Unable to create your account right now.");
-
-      if (!response.ok) {
+      if (error) {
+        const message = error.message || "Unable to create your account right now.";
         setErrors({ form: message });
         toast.error(message);
         return;
       }
 
-      toast.success(message);
+      toast.success("Account created successfully. Please log in.");
       router.push("/login");
       router.refresh();
     } catch {

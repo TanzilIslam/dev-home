@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase/client";
 import { loginSchema } from "@/lib/auth/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,30 +85,19 @@ export function LoginForm({ serverError }: LoginFormProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(parsed.data),
+      const { error } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { message?: string }
-        | null;
-
-      const message =
-        payload?.message ??
-        (response.ok ? "Logged in successfully." : "Unable to log in right now.");
-
-      if (!response.ok) {
+      if (error) {
+        const message = error.message || "Unable to log in right now.";
         setErrors({ form: message });
         toast.error(message);
         return;
       }
 
-      toast.success(message);
+      toast.success("Logged in successfully.");
       router.push("/dashboard");
       router.refresh();
     } catch {

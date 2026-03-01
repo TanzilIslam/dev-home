@@ -1,22 +1,14 @@
-import { http } from "@/lib/http";
+/**
+ * File download/view utilities (stub for removed upload module)
+ * TODO: Implement proper file handling with Supabase Storage
+ */
 
-export function viewFile(fileId: string) {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
-  window.open(`${base}/files/${fileId}`, "_blank");
+export function viewFile(fileId: string): void {
+  // TODO: Implement file viewing with Supabase Storage
+  console.warn("viewFile not yet implemented for Supabase Storage");
 }
 
-export async function downloadFile(fileId: string, filename: string) {
-  const response = await http.get<Blob>(`/files/${fileId}`, {
-    responseType: "blob",
-  });
-
-  const blob = new Blob([response.data]);
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+export function downloadFile(fileId: string, filename: string): void {
+  // TODO: Implement file download with Supabase Storage
+  console.warn("downloadFile not yet implemented for Supabase Storage");
 }
