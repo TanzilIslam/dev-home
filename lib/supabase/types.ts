@@ -77,7 +77,7 @@ export interface FileRecord {
 /**
  * API Response wrapper type
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   status?: number;

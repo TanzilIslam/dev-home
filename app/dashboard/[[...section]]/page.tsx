@@ -36,7 +36,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   return (
     <DashboardApp
-      user={{ email: user.email, name: user.name }}
+      user={{ email: user.email ?? "", name: (user.user_metadata?.name as string) ?? null }}
       initialSection={initialSection}
     />
   );

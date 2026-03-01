@@ -16,7 +16,6 @@ import type {
   LinkItem,
   LinkPayload,
   FileItem,
-  DropdownOption,
   ClientListData,
   ProjectListData,
   CodebaseListData,
@@ -52,17 +51,18 @@ export const ApiRequestError = SupabaseError;
 /**
  * Helper: Convert DB snake_case to camelCase
  */
-function toCamelCase(obj: any): any {
+function toCamelCase<T>(obj: T): T {
   if (Array.isArray(obj)) {
-    return obj.map(item => toCamelCase(item));
+    return obj.map(item => toCamelCase(item)) as T;
   }
 
   if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      acc[camelKey] = toCamelCase(obj[key]);
+    const record = obj as Record<string, unknown>;
+    return Object.keys(record).reduce<Record<string, unknown>>((acc, key) => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
+      acc[camelKey] = toCamelCase(record[key]);
       return acc;
-    }, {} as any);
+    }, {}) as T;
   }
 
   return obj;
@@ -71,20 +71,21 @@ function toCamelCase(obj: any): any {
 /**
  * Helper: Convert camelCase to snake_case for DB insert/update
  */
-function toSnakeCase(obj: any): any {
+function toSnakeCase<T>(obj: T): Record<string, unknown> {
   if (Array.isArray(obj)) {
-    return obj.map(item => toSnakeCase(item));
+    return obj.map(item => toSnakeCase(item)) as unknown as Record<string, unknown>;
   }
 
   if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
+    const record = obj as Record<string, unknown>;
+    return Object.keys(record).reduce<Record<string, unknown>>((acc, key) => {
       const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      acc[snakeKey] = toSnakeCase(obj[key]);
+      acc[snakeKey] = toSnakeCase(record[key]);
       return acc;
-    }, {} as any);
+    }, {});
   }
 
-  return obj;
+  return obj as unknown as Record<string, unknown>;
 }
 
 /**
@@ -108,16 +109,18 @@ function createPaginatedResponse<T>(
   page: number,
   pageSize: number,
 ): PaginatedData<T> {
-  const totalCount = count || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const total = count || 0;
+  const totalPages = Math.ceil(total / pageSize);
 
   return {
-    data,
+    items: data,
     meta: {
       page,
       pageSize,
-      count: totalCount,
+      total,
       totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
     },
   };
 }
@@ -158,7 +161,7 @@ export async function listClients(params?: ListQueryParams): Promise<ClientListD
 
     const { data, count, error } = await query;
 
-    if (error) throw new SupabaseError(error.message, { statusCode: error.code as any });
+    if (error) throw new SupabaseError(error.message, { statusCode: Number(error.code) || undefined });
 
     const camelData = toCamelCase(data || []);
     return createPaginatedResponse(camelData, count, page, pageSize);
@@ -288,10 +291,10 @@ export async function listProjects(params?: ProjectListQueryParams): Promise<Pro
 
     if (error) throw new SupabaseError(error.message);
 
-    const mapped = data?.map((p: any) => ({
+    const mapped = (data?.map((p: Record<string, unknown>) => ({
       ...toCamelCase(p),
-      clientName: p[TABLES.clients]?.[0]?.name || '',
-    })) || [];
+      clientName: (p[TABLES.clients] as Record<string, unknown>[])?.[0]?.name || '',
+    })) || []) as ProjectItem[];
 
     return createPaginatedResponse(mapped, count, page, pageSize);
   } catch (error) {
@@ -443,12 +446,16 @@ export async function listCodebases(params?: CodebaseListQueryParams): Promise<C
 
     if (error) throw new SupabaseError(error.message);
 
-    const mapped = data?.map((c: any) => ({
-      ...toCamelCase(c),
-      projectName: c[TABLES.projects]?.[0]?.name || '',
-      clientId: c[TABLES.projects]?.[0]?.client_id || '',
-      clientName: c[TABLES.projects]?.[0]?.[TABLES.clients]?.[0]?.name || '',
-    })) || [];
+    const mapped = (data?.map((c: Record<string, unknown>) => {
+      const project = (c[TABLES.projects] as Record<string, unknown>[])?.[0];
+      const client = (project?.[TABLES.clients] as Record<string, unknown>[])?.[0];
+      return {
+        ...toCamelCase(c),
+        projectName: (project?.name as string) || '',
+        clientId: (project?.client_id as string) || '',
+        clientName: (client?.name as string) || '',
+      };
+    }) || []) as CodebaseItem[];
 
     return createPaginatedResponse(mapped, count, page, pageSize);
   } catch (error) {
@@ -609,12 +616,12 @@ export async function listLinks(params?: LinkListQueryParams): Promise<LinkListD
 
     if (error) throw new SupabaseError(error.message);
 
-    const mapped = data?.map((l: any) => ({
+    const mapped = (data?.map((l: Record<string, unknown>) => ({
       ...toCamelCase(l),
-      clientName: (l as any).client?.[0]?.name || null,
-      projectName: (l as any).project?.[0]?.name || null,
-      codebaseName: (l as any).codebase?.[0]?.name || null,
-    })) || [];
+      clientName: (l.client as Record<string, unknown>[])?.[0]?.name || null,
+      projectName: (l.project as Record<string, unknown>[])?.[0]?.name || null,
+      codebaseName: (l.codebase as Record<string, unknown>[])?.[0]?.name || null,
+    })) || []) as LinkItem[];
 
     return createPaginatedResponse(mapped, count, page, pageSize);
   } catch (error) {
@@ -641,12 +648,13 @@ export async function createLink(payload: LinkPayload): Promise<LinkItem> {
 
     if (error) throw new SupabaseError(error.message);
 
+    const row = data as Record<string, unknown>;
     return {
-      ...toCamelCase(data),
-      clientName: (data as any).client?.[0]?.name || null,
-      projectName: (data as any).project?.[0]?.name || null,
-      codebaseName: (data as any).codebase?.[0]?.name || null,
-    };
+      ...toCamelCase(row),
+      clientName: (row.client as Record<string, unknown>[])?.[0]?.name || null,
+      projectName: (row.project as Record<string, unknown>[])?.[0]?.name || null,
+      codebaseName: (row.codebase as Record<string, unknown>[])?.[0]?.name || null,
+    } as LinkItem;
   } catch (error) {
     if (error instanceof SupabaseError) throw error;
     throw new SupabaseError('Failed to create link');
@@ -673,12 +681,13 @@ export async function updateLink(id: string, payload: LinkPayload): Promise<Link
 
     if (error) throw new SupabaseError(error.message);
 
+    const row = data as Record<string, unknown>;
     return {
-      ...toCamelCase(data),
-      clientName: (data as any).client?.[0]?.name || null,
-      projectName: (data as any).project?.[0]?.name || null,
-      codebaseName: (data as any).codebase?.[0]?.name || null,
-    };
+      ...toCamelCase(row),
+      clientName: (row.client as Record<string, unknown>[])?.[0]?.name || null,
+      projectName: (row.project as Record<string, unknown>[])?.[0]?.name || null,
+      codebaseName: (row.codebase as Record<string, unknown>[])?.[0]?.name || null,
+    } as LinkItem;
   } catch (error) {
     if (error instanceof SupabaseError) throw error;
     throw new SupabaseError('Failed to update link');

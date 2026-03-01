@@ -25,7 +25,7 @@ import {
   getLabelByValue,
 } from "@/lib/constants/domain";
 import { listFiles, listProjects } from "@/lib/supabase/queries";
-import { supabase } from "@/lib/supabase/client";
+
 import { viewFile } from "@/lib/upload/download";
 import { useCancellableFetch } from "@/hooks/use-cancellable-fetch";
 import { FileList } from "@/components/dashboard/file-list";
@@ -45,18 +45,14 @@ export function ClientsSection() {
 
   const fetchProjects = useCallback(
     async (clientId: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const result = await listProjects(user.id, 1, 1000, undefined, clientId);
+      const result = await listProjects({ all: true, clientId });
       return result?.items ?? [];
     },
     [],
   );
   const fetchFiles = useCallback(
     async (clientId: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const result = await listFiles(user.id, 1, 1000, undefined, clientId);
+      const result = await listFiles({ all: true, clientId });
       return result?.items ?? [];
     },
     [],
