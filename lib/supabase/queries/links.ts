@@ -2,17 +2,16 @@ import { supabase } from "../client";
 import { TABLES } from "@/lib/config/tables";
 import type { LinkItem, LinkPayload, LinkListData, LinkListQueryParams } from "@/types/domain";
 import {
-  SupabaseError,
   toCamelCase,
   toSnakeCase,
   parseListParams,
   createPaginatedResponse,
-  getCurrentUserId,
+  throwIfError,
+  withAuth,
 } from "./utils";
 
-export async function listLinks(params?: LinkListQueryParams): Promise<LinkListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listLinks(params?: LinkListQueryParams): Promise<LinkListData> {
+  return withAuth("Failed to fetch links", async (userId) => {
     const { page, pageSize, search, offset } = parseListParams(params);
 
     let query = supabase
@@ -48,8 +47,7 @@ export async function listLinks(params?: LinkListQueryParams): Promise<LinkListD
     }
 
     const { data, count, error } = await query;
-
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     const mapped = (data?.map((l: Record<string, unknown>) => ({
       ...toCamelCase(l),
@@ -59,15 +57,11 @@ export async function listLinks(params?: LinkListQueryParams): Promise<LinkListD
     })) || []) as LinkItem[];
 
     return createPaginatedResponse(mapped, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch links");
-  }
+  });
 }
 
-export async function createLink(payload: LinkPayload): Promise<LinkItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function createLink(payload: LinkPayload): Promise<LinkItem> {
+  return withAuth("Failed to create link", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -83,7 +77,7 @@ export async function createLink(payload: LinkPayload): Promise<LinkItem> {
       )
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     const row = data as Record<string, unknown>;
     return {
@@ -92,15 +86,11 @@ export async function createLink(payload: LinkPayload): Promise<LinkItem> {
       projectName: ((row.project as Record<string, unknown> | null)?.name as string) || null,
       codebaseName: ((row.codebase as Record<string, unknown> | null)?.name as string) || null,
     } as LinkItem;
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to create link");
-  }
+  });
 }
 
-export async function updateLink(id: string, payload: LinkPayload): Promise<LinkItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function updateLink(id: string, payload: LinkPayload): Promise<LinkItem> {
+  return withAuth("Failed to update link", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -118,7 +108,7 @@ export async function updateLink(id: string, payload: LinkPayload): Promise<Link
       )
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     const row = data as Record<string, unknown>;
     return {
@@ -127,21 +117,13 @@ export async function updateLink(id: string, payload: LinkPayload): Promise<Link
       projectName: ((row.project as Record<string, unknown> | null)?.name as string) || null,
       codebaseName: ((row.codebase as Record<string, unknown> | null)?.name as string) || null,
     } as LinkItem;
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to update link");
-  }
+  });
 }
 
-export async function deleteLink(id: string): Promise<void> {
-  try {
-    const userId = await getCurrentUserId();
-
+export function deleteLink(id: string): Promise<void> {
+  return withAuth("Failed to delete link", async (userId) => {
     const { error } = await supabase.from(TABLES.links).delete().eq("id", id).eq("user_id", userId);
 
-    if (error) throw new SupabaseError(error.message);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to delete link");
-  }
+    throwIfError(error);
+  });
 }

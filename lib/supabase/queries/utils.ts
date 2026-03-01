@@ -103,7 +103,7 @@ export function createPaginatedResponse<T>(
 /**
  * Helper: Get current user ID from session
  */
-export async function getCurrentUserId(): Promise<string> {
+async function getCurrentUserId(): Promise<string> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -111,4 +111,32 @@ export async function getCurrentUserId(): Promise<string> {
     throw new SupabaseError("Not authenticated");
   }
   return session.user.id;
+}
+
+/**
+ * Helper: Throw SupabaseError if a Supabase operation returned an error
+ */
+export function throwIfError(error: { message: string; code?: string } | null): void {
+  if (error) {
+    throw new SupabaseError(error.message, {
+      statusCode: Number(error.code) || undefined,
+    });
+  }
+}
+
+/**
+ * Helper: Wrap an authenticated query with error boundary
+ * Handles getCurrentUserId + catch/rethrow boilerplate
+ */
+export async function withAuth<T>(
+  fallbackMessage: string,
+  fn: (userId: string) => Promise<T>,
+): Promise<T> {
+  try {
+    const userId = await getCurrentUserId();
+    return await fn(userId);
+  } catch (error) {
+    if (error instanceof SupabaseError) throw error;
+    throw new SupabaseError(fallbackMessage);
+  }
 }

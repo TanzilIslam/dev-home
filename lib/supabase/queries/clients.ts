@@ -8,17 +8,16 @@ import type {
   ListQueryParams,
 } from "@/types/domain";
 import {
-  SupabaseError,
   toCamelCase,
   toSnakeCase,
   parseListParams,
   createPaginatedResponse,
-  getCurrentUserId,
+  throwIfError,
+  withAuth,
 } from "./utils";
 
-export async function listClients(params?: ListQueryParams): Promise<ClientListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listClients(params?: ListQueryParams): Promise<ClientListData> {
+  return withAuth("Failed to fetch clients", async (userId) => {
     const { page, pageSize, search, offset } = parseListParams(params);
 
     let query = supabase
@@ -36,21 +35,14 @@ export async function listClients(params?: ListQueryParams): Promise<ClientListD
     }
 
     const { data, count, error } = await query;
+    throwIfError(error);
 
-    if (error)
-      throw new SupabaseError(error.message, { statusCode: Number(error.code) || undefined });
-
-    const camelData = toCamelCase(data || []);
-    return createPaginatedResponse(camelData, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch clients");
-  }
+    return createPaginatedResponse(toCamelCase(data || []), count, page, pageSize);
+  });
 }
 
-export async function listClientDropdown(params?: ListQueryParams): Promise<DropdownListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listClientDropdown(params?: ListQueryParams): Promise<DropdownListData> {
+  return withAuth("Failed to fetch clients", async (userId) => {
     const { page, pageSize, search } = parseListParams(params);
 
     let query = supabase
@@ -66,20 +58,14 @@ export async function listClientDropdown(params?: ListQueryParams): Promise<Drop
     query = query.limit(pageSize);
 
     const { data, count, error } = await query;
+    throwIfError(error);
 
-    if (error) throw new SupabaseError(error.message);
-
-    const camelData = toCamelCase(data || []);
-    return createPaginatedResponse(camelData, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch clients");
-  }
+    return createPaginatedResponse(toCamelCase(data || []), count, page, pageSize);
+  });
 }
 
-export async function createClient(payload: ClientPayload): Promise<ClientItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function createClient(payload: ClientPayload): Promise<ClientItem> {
+  return withAuth("Failed to create client", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -88,17 +74,13 @@ export async function createClient(payload: ClientPayload): Promise<ClientItem> 
       .select()
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
     return toCamelCase(data);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to create client");
-  }
+  });
 }
 
-export async function updateClient(id: string, payload: ClientPayload): Promise<ClientItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function updateClient(id: string, payload: ClientPayload): Promise<ClientItem> {
+  return withAuth("Failed to update client", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -109,27 +91,19 @@ export async function updateClient(id: string, payload: ClientPayload): Promise<
       .select()
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
     return toCamelCase(data);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to update client");
-  }
+  });
 }
 
-export async function deleteClient(id: string): Promise<void> {
-  try {
-    const userId = await getCurrentUserId();
-
+export function deleteClient(id: string): Promise<void> {
+  return withAuth("Failed to delete client", async (userId) => {
     const { error } = await supabase
       .from(TABLES.clients)
       .delete()
       .eq("id", id)
       .eq("user_id", userId);
 
-    if (error) throw new SupabaseError(error.message);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to delete client");
-  }
+    throwIfError(error);
+  });
 }

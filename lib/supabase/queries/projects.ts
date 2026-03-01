@@ -8,17 +8,16 @@ import type {
   ProjectListQueryParams,
 } from "@/types/domain";
 import {
-  SupabaseError,
   toCamelCase,
   toSnakeCase,
   parseListParams,
   createPaginatedResponse,
-  getCurrentUserId,
+  throwIfError,
+  withAuth,
 } from "./utils";
 
-export async function listProjects(params?: ProjectListQueryParams): Promise<ProjectListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listProjects(params?: ProjectListQueryParams): Promise<ProjectListData> {
+  return withAuth("Failed to fetch projects", async (userId) => {
     const { page, pageSize, search, offset } = parseListParams(params);
 
     let query = supabase
@@ -46,8 +45,7 @@ export async function listProjects(params?: ProjectListQueryParams): Promise<Pro
     }
 
     const { data, count, error } = await query;
-
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     const mapped = (data?.map((p: Record<string, unknown>) => ({
       ...toCamelCase(p),
@@ -55,17 +53,11 @@ export async function listProjects(params?: ProjectListQueryParams): Promise<Pro
     })) || []) as ProjectItem[];
 
     return createPaginatedResponse(mapped, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch projects");
-  }
+  });
 }
 
-export async function listProjectDropdown(
-  params?: ProjectListQueryParams,
-): Promise<DropdownListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listProjectDropdown(params?: ProjectListQueryParams): Promise<DropdownListData> {
+  return withAuth("Failed to fetch projects", async (userId) => {
     const { page, pageSize, search } = parseListParams(params);
 
     let query = supabase
@@ -85,20 +77,14 @@ export async function listProjectDropdown(
     query = query.limit(pageSize);
 
     const { data, count, error } = await query;
+    throwIfError(error);
 
-    if (error) throw new SupabaseError(error.message);
-
-    const camelData = toCamelCase(data || []);
-    return createPaginatedResponse(camelData, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch projects");
-  }
+    return createPaginatedResponse(toCamelCase(data || []), count, page, pageSize);
+  });
 }
 
-export async function createProject(payload: ProjectPayload): Promise<ProjectItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function createProject(payload: ProjectPayload): Promise<ProjectItem> {
+  return withAuth("Failed to create project", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -112,21 +98,17 @@ export async function createProject(payload: ProjectPayload): Promise<ProjectIte
       )
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     return {
       ...toCamelCase(data),
       clientName: (data[TABLES.clients] as Record<string, unknown> | null)?.name || "",
     };
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to create project");
-  }
+  });
 }
 
-export async function updateProject(id: string, payload: ProjectPayload): Promise<ProjectItem> {
-  try {
-    const userId = await getCurrentUserId();
+export function updateProject(id: string, payload: ProjectPayload): Promise<ProjectItem> {
+  return withAuth("Failed to update project", async (userId) => {
     const snakePayload = toSnakeCase(payload);
 
     const { data, error } = await supabase
@@ -142,31 +124,23 @@ export async function updateProject(id: string, payload: ProjectPayload): Promis
       )
       .single();
 
-    if (error) throw new SupabaseError(error.message);
+    throwIfError(error);
 
     return {
       ...toCamelCase(data),
       clientName: (data[TABLES.clients] as Record<string, unknown> | null)?.name || "",
     };
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to update project");
-  }
+  });
 }
 
-export async function deleteProject(id: string): Promise<void> {
-  try {
-    const userId = await getCurrentUserId();
-
+export function deleteProject(id: string): Promise<void> {
+  return withAuth("Failed to delete project", async (userId) => {
     const { error } = await supabase
       .from(TABLES.projects)
       .delete()
       .eq("id", id)
       .eq("user_id", userId);
 
-    if (error) throw new SupabaseError(error.message);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to delete project");
-  }
+    throwIfError(error);
+  });
 }

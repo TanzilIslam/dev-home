@@ -6,7 +6,8 @@ import {
   toCamelCase,
   parseListParams,
   createPaginatedResponse,
-  getCurrentUserId,
+  throwIfError,
+  withAuth,
 } from "./utils";
 
 const SIGNED_URL_EXPIRY = 60; // seconds
@@ -23,7 +24,7 @@ export async function createSignedUrl(storagePath: string): Promise<string> {
   return data.signedUrl;
 }
 
-export async function uploadFile(params: {
+export function uploadFile(params: {
   file: File;
   clientId?: string | null;
   projectId?: string | null;
@@ -31,9 +32,7 @@ export async function uploadFile(params: {
   maxSize?: number;
   allowedMimeTypes?: string[];
 }): Promise<FileItem> {
-  try {
-    const userId = await getCurrentUserId();
-
+  return withAuth("File upload failed", async (userId) => {
     // File size validation
     const maxSize = params.maxSize || 4 * 1024 * 1024; // 4MB default
     if (params.file.size > maxSize) {
@@ -84,15 +83,11 @@ export async function uploadFile(params: {
     }
 
     return toCamelCase(data);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("File upload failed");
-  }
+  });
 }
 
-export async function listFiles(params?: FileListQueryParams): Promise<FileListData> {
-  try {
-    const userId = await getCurrentUserId();
+export function listFiles(params?: FileListQueryParams): Promise<FileListData> {
+  return withAuth("Failed to fetch files", async (userId) => {
     const { page, pageSize, search, offset } = parseListParams(params);
 
     let query = supabase
@@ -120,21 +115,14 @@ export async function listFiles(params?: FileListQueryParams): Promise<FileListD
     }
 
     const { data, count, error } = await query;
+    throwIfError(error);
 
-    if (error) throw new SupabaseError(error.message);
-
-    const camelData = toCamelCase(data || []);
-    return createPaginatedResponse(camelData, count, page, pageSize);
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to fetch files");
-  }
+    return createPaginatedResponse(toCamelCase(data || []), count, page, pageSize);
+  });
 }
 
-export async function deleteFileRecord(id: string): Promise<void> {
-  try {
-    const userId = await getCurrentUserId();
-
+export function deleteFileRecord(id: string): Promise<void> {
+  return withAuth("Failed to delete file", async (userId) => {
     // Get file record to get storage path
     const { data: fileData, error: fetchError } = await supabase
       .from(TABLES.files)
@@ -162,8 +150,5 @@ export async function deleteFileRecord(id: string): Promise<void> {
     if (deleteError) {
       throw new SupabaseError("Failed to delete file record");
     }
-  } catch (error) {
-    if (error instanceof SupabaseError) throw error;
-    throw new SupabaseError("Failed to delete file");
-  }
+  });
 }
