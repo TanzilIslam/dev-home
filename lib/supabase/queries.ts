@@ -895,6 +895,23 @@ export async function changePassword(payload: {
       throw new SupabaseError('Passwords do not match');
     }
 
+    // Re-authenticate with current password before allowing change
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      throw new SupabaseError('Not authenticated');
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: payload.currentPassword,
+    });
+
+    if (signInError) {
+      throw new SupabaseError('Current password is incorrect', {
+        fieldErrors: { currentPassword: ['Current password is incorrect'] },
+      });
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: payload.newPassword,
     });

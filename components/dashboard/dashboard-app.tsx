@@ -94,7 +94,7 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { GlobalDeleteDialog } from "@/components/dashboard/global-delete-dialog";
 import { GlobalFormSheet } from "@/components/dashboard/global-form-sheet";
-import { NetworkActivityIndicator } from "@/components/dashboard/network-activity-indicator";
+
 import { ClientsSection } from "@/components/dashboard/sections/clients-section";
 import { ProjectsSection } from "@/components/dashboard/sections/projects-section";
 import { CodebasesSection } from "@/components/dashboard/sections/codebases-section";
@@ -827,7 +827,6 @@ export function DashboardApp({ user, initialSection }: DashboardAppProps) {
         <AppSidebar />
         <SidebarInset>
           <DashboardHeader />
-          <NetworkActivityIndicator />
           <div className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
             <ActiveSection user={user} />
           </div>
