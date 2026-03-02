@@ -32,7 +32,7 @@ export default function Home() {
       <AuthHeader
         actions={
           <Button asChild size="sm" variant="ghost">
-            <Link href="/login">Log in</Link>
+            <Link href="/auth/login">Log in</Link>
           </Button>
         }
       />
@@ -57,13 +57,13 @@ export default function Home() {
 
         <div className="mt-8 flex items-center gap-3">
           <Button asChild size="lg">
-            <Link href="/signup">
+            <Link href="/auth/signup">
               Get Started
               <ArrowRight className="ml-2 size-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/login">Log in</Link>
+            <Link href="/auth/login">Log in</Link>
           </Button>
         </div>
 

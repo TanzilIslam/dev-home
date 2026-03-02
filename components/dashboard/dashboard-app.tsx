@@ -191,7 +191,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
     async function checkAuth() {
       const authUser = await getAuthUser();
       if (!authUser) {
-        router.replace("/login");
+        router.replace("/auth/login");
         return;
       }
       setUser({
@@ -207,7 +207,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
       data: { subscription },
     } = onAuthStateChange((_event, session) => {
       if (!session) {
-        router.replace("/login");
+        router.replace("/auth/login");
       }
     });
 

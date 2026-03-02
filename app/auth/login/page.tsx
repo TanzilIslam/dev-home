@@ -21,17 +21,29 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </CardHeader>
         <CardContent>
           <LoginForm serverError={error} />
-          <div className="mt-4 flex items-center justify-between text-sm">
+          <div className="mt-4 flex flex-col gap-2 text-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground">
+                New here?{" "}
+                <Link href="/auth/signup" className="text-foreground underline">
+                  Create an account
+                </Link>
+                .
+              </p>
+              <Link
+                href="/auth/forgot-password"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <p className="text-muted-foreground">
-              New here?{" "}
-              <Link href="/signup" className="text-foreground underline">
-                Create an account
+              Link expired?{" "}
+              <Link href="/auth/verify-email" className="text-foreground underline">
+                Resend verification email
               </Link>
               .
             </p>
-            <Link href="/forgot-password" className="text-muted-foreground hover:text-foreground">
-              Forgot password?
-            </Link>
           </div>
         </CardContent>
       </Card>

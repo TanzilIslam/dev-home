@@ -43,6 +43,9 @@ export {
   getAuthUser,
   onAuthStateChange,
   signOut,
+  resendVerificationEmail,
+  verifyOtp,
+  exchangeCodeForSession,
   resetPasswordForEmail,
   updatePassword,
 } from "./auth";

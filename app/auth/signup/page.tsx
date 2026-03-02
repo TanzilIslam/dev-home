@@ -25,7 +25,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           <SignupForm serverError={error} />
           <p className="text-muted-foreground mt-4 text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="text-foreground underline">
+            <Link href="/auth/login" className="text-foreground underline">
               Log in
             </Link>
             .

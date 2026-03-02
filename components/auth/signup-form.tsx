@@ -119,7 +119,7 @@ export function SignupForm({ serverError }: SignupFormProps) {
           activate your account.
         </p>
         <Button asChild className="mt-4 w-full" variant="outline">
-          <Link href="/login">
+          <Link href="/auth/login">
             Go to login
             <ArrowRight className="ml-2 size-4" />
           </Link>

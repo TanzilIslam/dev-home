@@ -63,6 +63,41 @@ export async function signOut(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Email Verification / OAuth
+// ---------------------------------------------------------------------------
+
+export async function resendVerificationEmail(
+  email: string,
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+  });
+
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function verifyOtp(params: {
+  tokenHash: string;
+  type: "signup" | "email" | "recovery" | "invite";
+}): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: params.tokenHash,
+    type: params.type,
+  });
+
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function exchangeCodeForSession(
+  code: string,
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  return { error: error ? { message: error.message } : null };
+}
+
+// ---------------------------------------------------------------------------
 // Password Reset
 // ---------------------------------------------------------------------------
 

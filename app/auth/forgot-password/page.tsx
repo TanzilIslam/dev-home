@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
           <ForgotPasswordForm />
           <p className="text-muted-foreground mt-4 text-sm">
             Remember your password?{" "}
-            <Link href="/login" className="text-foreground underline">
+            <Link href="/auth/login" className="text-foreground underline">
               Log in
             </Link>
             .
