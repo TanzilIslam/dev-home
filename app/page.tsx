@@ -13,10 +13,21 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} — Manage your clients, projects, codebases & links`,
     description: siteConfig.description,
     url: "/",
+    images: [
+      {
+        url: `${siteConfig.url}/og.webp`,
+        width: 1200,
+        height: 630,
+        alt: siteConfig.name,
+        type: "image/webp",
+      },
+    ],
   },
   twitter: {
+    card: "summary_large_image",
     title: `${siteConfig.name} — Manage your clients, projects, codebases & links`,
     description: siteConfig.description,
+    images: [`${siteConfig.url}/og.webp`],
   },
 };
 

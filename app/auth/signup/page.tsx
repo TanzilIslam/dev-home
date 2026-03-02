@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SignupForm } from "@/components/auth/signup-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { siteConfig } from "@/lib/config/site";
 
 export const metadata: Metadata = {
   title: "Create account",
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     description:
       "Sign up for Dev Home to organize your clients, projects, codebases, and links in one place.",
     url: "/auth/signup",
+    images: [{ url: `${siteConfig.url}/og.webp`, width: 1200, height: 630, alt: siteConfig.name }],
   },
 };
 

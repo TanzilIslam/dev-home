@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { siteConfig } from "@/lib/config/site";
 
 export const metadata: Metadata = {
   title: "Log in",
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
     title: "Log in | Dev Home",
     description: "Log in to your Dev Home dashboard to manage clients, projects, and links.",
     url: "/auth/login",
+    images: [{ url: `${siteConfig.url}/og.webp`, width: 1200, height: 630, alt: siteConfig.name }],
   },
 };
 
