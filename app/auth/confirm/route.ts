@@ -27,6 +27,12 @@ export async function GET(request: NextRequest) {
         new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url),
       );
     }
+
+    // After a recovery token is verified, redirect to the reset-password page
+    // so the user can set a new password while their session is active.
+    if (type === "recovery") {
+      return NextResponse.redirect(new URL("/reset-password", request.url));
+    }
   }
 
   return NextResponse.redirect(new URL("/dashboard", request.url));

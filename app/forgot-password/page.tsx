@@ -1,30 +1,22 @@
 import Link from "next/link";
-import { SignupForm } from "@/components/auth/signup-form";
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-type SignupPageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const params = await searchParams;
-  const rawError = params.error;
-  const error = Array.isArray(rawError) ? rawError[0] : rawError;
-
+export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
       <Card>
         <CardHeader>
-          <CardTitle>Create account</CardTitle>
+          <CardTitle>Reset password</CardTitle>
           <CardDescription>
-            Set up your dashboard to manage client, project, and codebase links.
+            Enter your email and we&apos;ll send you a link to reset your password.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SignupForm serverError={error} />
+          <ForgotPasswordForm />
           <p className="text-muted-foreground mt-4 text-sm">
-            Already have an account?{" "}
+            Remember your password?{" "}
             <Link href="/login" className="text-foreground underline">
               Log in
             </Link>

@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { LogOut, UserCircle } from "lucide-react";
+import { signOut } from "@/lib/supabase/queries";
 import { useAppStore } from "@/store/use-app-store";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +17,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { DashboardBreadcrumbs } from "@/components/dashboard/dashboard-breadcrumbs";
 
 export function DashboardHeader() {
+  const router = useRouter();
   const setActiveSection = useAppStore((state) => state.setActiveSection);
+
+  async function handleLogout() {
+    await signOut();
+    router.push("/login");
+  }
 
   return (
     <header className="flex h-14 items-center gap-2 border-b px-4">
@@ -36,13 +44,9 @@ export function DashboardHeader() {
               <UserCircle className="size-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <form action="/api/auth/logout" method="post" className="w-full">
-                <button type="submit" className="flex w-full items-center gap-2">
-                  <LogOut className="size-4" />
-                  Log out
-                </button>
-              </form>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="size-4" />
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Code, FolderKanban, Link2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthHeader } from "@/components/auth/auth-header";
 
 const FEATURES = [
   {
@@ -29,16 +29,13 @@ const FEATURES = [
 export default function Home() {
   return (
     <div className="relative flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 md:px-10">
-        <span className="text-lg font-semibold tracking-tight">Dev Home</span>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
+      <AuthHeader
+        actions={
           <Button asChild size="sm" variant="ghost">
             <Link href="/login">Log in</Link>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Hero */}
       <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
@@ -47,9 +44,9 @@ export default function Home() {
         </div>
 
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-          Everything you need,{" "}
+          Manage your clients, projects, codebases links{" "}
           <span className="bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-            all in one place
+            in one place
           </span>
         </h1>
 

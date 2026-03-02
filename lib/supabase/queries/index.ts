@@ -42,4 +42,7 @@ export {
   signUp,
   getAuthUser,
   onAuthStateChange,
+  signOut,
+  resetPasswordForEmail,
+  updatePassword,
 } from "./auth";

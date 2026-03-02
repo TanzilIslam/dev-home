@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowRight, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 import { signUp } from "@/lib/supabase/queries";
 import { signupSchema } from "@/lib/auth/validation";
@@ -21,16 +22,10 @@ type SignupFieldErrors = {
   form?: string;
 };
 
-function toFieldErrors(message: string): SignupFieldErrors {
-  return { form: message };
-}
-
 export function SignupForm({ serverError }: SignupFormProps) {
-  const router = useRouter();
-  const [errors, setErrors] = useState<SignupFieldErrors>(
-    serverError ? toFieldErrors(serverError) : {},
-  );
+  const [errors, setErrors] = useState<SignupFieldErrors>(serverError ? { form: serverError } : {});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
 
   function clearFieldError(field: keyof SignupFieldErrors) {
     setErrors((previous) => {
@@ -101,8 +96,8 @@ export function SignupForm({ serverError }: SignupFormProps) {
         return;
       }
 
-      toast.success("Account created successfully. Please log in.");
-      router.push("/login");
+      setIsEmailSent(true);
+      toast.success("Account created! Check your email to verify.");
     } catch {
       const message = "Unable to create your account right now.";
       setErrors({ form: message });
@@ -110,6 +105,32 @@ export function SignupForm({ serverError }: SignupFormProps) {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (isEmailSent) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <div className="bg-primary/10 mb-4 inline-flex size-12 items-center justify-center rounded-full">
+          <MailCheck className="text-primary size-6" />
+        </div>
+        <h3 className="text-base font-semibold">Verify your email</h3>
+        <p className="text-muted-foreground mt-1 text-sm">
+          We sent a verification link to your email. Please check your inbox and click the link to
+          activate your account.
+        </p>
+        <Button asChild className="mt-4 w-full" variant="outline">
+          <Link href="/login">
+            Go to login
+            <ArrowRight className="ml-2 size-4" />
+          </Link>
+        </Button>
+        <div className="bg-muted mt-4 w-full rounded-md px-4 py-3">
+          <p className="text-muted-foreground text-xs">
+            Didn&apos;t receive it? Check your spam folder.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

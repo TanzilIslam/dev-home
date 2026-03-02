@@ -58,6 +58,34 @@ export function onAuthStateChange(callback: (event: string, session: Session | n
   return supabase.auth.onAuthStateChange(callback);
 }
 
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+// ---------------------------------------------------------------------------
+// Password Reset
+// ---------------------------------------------------------------------------
+
+export async function resetPasswordForEmail(
+  email: string,
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth/confirm`,
+  });
+
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function updatePassword(
+  newPassword: string,
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  return { error: error ? { message: error.message } : null };
+}
+
 // ---------------------------------------------------------------------------
 // Profile / Password
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type LoginPageProps = {
@@ -12,7 +13,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const error = Array.isArray(rawError) ? rawError[0] : rawError;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-16">
+    <AuthLayout>
       <Card>
         <CardHeader>
           <CardTitle>Log in</CardTitle>
@@ -20,15 +21,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </CardHeader>
         <CardContent>
           <LoginForm serverError={error} />
-          <p className="text-muted-foreground mt-4 text-sm">
-            New here?{" "}
-            <Link href="/signup" className="text-foreground underline">
-              Create an account
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <p className="text-muted-foreground">
+              New here?{" "}
+              <Link href="/signup" className="text-foreground underline">
+                Create an account
+              </Link>
+              .
+            </p>
+            <Link href="/forgot-password" className="text-muted-foreground hover:text-foreground">
+              Forgot password?
             </Link>
-            .
-          </p>
+          </div>
         </CardContent>
       </Card>
-    </main>
+    </AuthLayout>
   );
 }
