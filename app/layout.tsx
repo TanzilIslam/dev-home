@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: [
       {
-        url: "/og.webp",
+        url: `${siteConfig.url}/og.webp`,
         width: 1200,
         height: 630,
         alt: siteConfig.name,
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteConfig.name,
     description: siteConfig.description,
-    images: ["/og.webp"],
+    images: [`${siteConfig.url}/og.webp`],
   },
   robots: {
     index: true,
