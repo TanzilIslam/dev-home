@@ -1,7 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Log in to your Dev Home dashboard to manage clients, projects, and links.",
+  alternates: { canonical: "/auth/login" },
+  openGraph: {
+    title: "Log in | Dev Home",
+    description: "Log in to your Dev Home dashboard to manage clients, projects, and links.",
+    url: "/auth/login",
+  },
+};
 
 type LoginPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

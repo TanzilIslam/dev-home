@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignupForm } from "@/components/auth/signup-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Create account",
+  description:
+    "Sign up for Dev Home to organize your clients, projects, codebases, and links in one place.",
+  alternates: { canonical: "/auth/signup" },
+  openGraph: {
+    title: "Create account | Dev Home",
+    description:
+      "Sign up for Dev Home to organize your clients, projects, codebases, and links in one place.",
+    url: "/auth/signup",
+  },
+};
 
 type SignupPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

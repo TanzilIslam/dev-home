@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
@@ -12,7 +12,7 @@ import { AuthLayout } from "@/components/auth/auth-layout";
 import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
-export default function AuthConfirmPage() {
+function AuthConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const verifiedRef = useRef(false);
@@ -101,5 +101,22 @@ export default function AuthConfirmPage() {
         <p className="text-muted-foreground text-sm">Verifying...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Spinner className="size-6" />
+            <p className="text-muted-foreground text-sm">Verifying...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthConfirmContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { exchangeCodeForSession } from "@/lib/supabase/queries";
 import { Spinner } from "@/components/ui/spinner";
@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
  * Handles OAuth code exchange (e.g. Google, GitHub login).
  * Supabase redirects here with ?code=... after a successful OAuth flow.
  */
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const exchangedRef = useRef(false);
@@ -42,5 +42,22 @@ export default function AuthCallbackPage() {
         <p className="text-muted-foreground text-sm">Signing in...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Spinner className="size-6" />
+            <p className="text-muted-foreground text-sm">Signing in...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

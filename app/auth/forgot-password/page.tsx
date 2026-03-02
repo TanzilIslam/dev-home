@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Reset password",
+  description: "Reset your Dev Home account password.",
+  alternates: { canonical: "/auth/forgot-password" },
+  robots: { index: false },
+};
 
 export default function ForgotPasswordPage() {
   return (

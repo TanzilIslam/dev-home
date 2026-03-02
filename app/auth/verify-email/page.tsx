@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Resend verification email",
+  description: "Resend the email verification link for your Dev Home account.",
+  robots: { index: false },
+};
 
 export default function VerifyEmailPage() {
   return (

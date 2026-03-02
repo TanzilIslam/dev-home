@@ -1,7 +1,24 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Code, FolderKanban, Link2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthHeader } from "@/components/auth/auth-header";
+import { siteConfig } from "@/lib/config/site";
+
+export const metadata: Metadata = {
+  title: `${siteConfig.name} — Manage your clients, projects, codebases & links`,
+  description: siteConfig.description,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: `${siteConfig.name} — Manage your clients, projects, codebases & links`,
+    description: siteConfig.description,
+    url: "/",
+  },
+  twitter: {
+    title: `${siteConfig.name} — Manage your clients, projects, codebases & links`,
+    description: siteConfig.description,
+  },
+};
 
 const FEATURES = [
   {
@@ -26,9 +43,54 @@ const FEATURES = [
   },
 ];
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${siteConfig.url}/#website`,
+      url: siteConfig.url,
+      name: siteConfig.name,
+      description: siteConfig.description,
+      inLanguage: "en-US",
+    },
+    {
+      "@type": "WebApplication",
+      "@id": `${siteConfig.url}/#app`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+      description: siteConfig.description,
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "All",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      featureList: [
+        "Client management",
+        "Project tracking",
+        "Codebase organization",
+        "Link management",
+        "File storage",
+      ],
+    },
+    {
+      "@type": "Organization",
+      "@id": `${siteConfig.url}/#organization`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <div className="relative flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <AuthHeader
         actions={
           <Button asChild size="sm" variant="ghost">
