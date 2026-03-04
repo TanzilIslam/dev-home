@@ -72,6 +72,7 @@ import {
 } from "@/types/dashboard";
 import { FormErrorText } from "@/components/ui/form-error-text";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
@@ -80,7 +81,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import {
   DashboardContext,
@@ -1249,7 +1249,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
                   rows={2}
                   value={clientFormValues.address ?? ""}
                   onChange={(e) => {
-                    setClientFormValues((p) => ({ ...p, address: toNullableText(e.target.value) }));
+                    setClientFormValues((p) => ({ ...p, address: e.target.value || null }));
                     setClientErrors((p) => ({ ...p, address: undefined, form: undefined }));
                   }}
                 />
@@ -1264,7 +1264,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
                   rows={4}
                   value={clientFormValues.notes ?? ""}
                   onChange={(e) => {
-                    setClientFormValues((p) => ({ ...p, notes: toNullableText(e.target.value) }));
+                    setClientFormValues((p) => ({ ...p, notes: e.target.value || null }));
                     setClientErrors((p) => ({ ...p, notes: undefined, form: undefined }));
                   }}
                 />
@@ -1374,7 +1374,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
                   onChange={(e) => {
                     setProjectFormValues((p) => ({
                       ...p,
-                      description: toNullableText(e.target.value),
+                      description: e.target.value || null,
                     }));
                     setProjectErrors((p) => ({ ...p, description: undefined, form: undefined }));
                   }}
@@ -1471,7 +1471,7 @@ export function DashboardApp({ initialSection }: DashboardAppProps) {
                   onChange={(e) => {
                     setCodebaseFormValues((p) => ({
                       ...p,
-                      description: toNullableText(e.target.value),
+                      description: e.target.value || null,
                     }));
                     setCodebaseErrors((p) => ({ ...p, description: undefined, form: undefined }));
                   }}

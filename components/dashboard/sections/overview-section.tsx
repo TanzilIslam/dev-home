@@ -219,7 +219,7 @@ function CodebaseLinksCard({ links }: { links: LinkItem[] }) {
 // Client tab content (3 cards)
 // ---------------------------------------------------------------------------
 
-function ClientTabContent({ clientId }: { clientId: string }) {
+function ClientTabContent({ clientId, notes }: { clientId: string; notes?: string | null }) {
   const fetchLinks = useCallback(async (id: string) => {
     const result = await listLinks({ all: true, clientId: id });
     return result.items;
@@ -318,6 +318,15 @@ function ClientTabContent({ clientId }: { clientId: string }) {
               </ul>
             </>
           )}
+          {notes && (
+            <>
+              <div className="my-3 border-t" />
+              <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                Notes
+              </p>
+              <p className="text-muted-foreground whitespace-pre-wrap text-sm">{notes}</p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -329,7 +338,15 @@ function ClientTabContent({ clientId }: { clientId: string }) {
 // ---------------------------------------------------------------------------
 
 export function OverviewSection() {
-  const { clientOptions } = useDashboard();
+  const { clientOptions, clients } = useDashboard();
+
+  const clientNotesMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const c of clients.items) {
+      map.set(c.id, c.notes ?? null);
+    }
+    return map;
+  }, [clients.items]);
 
   const setActiveSection = useAppStore((state) => state.setActiveSection);
 
@@ -377,7 +394,7 @@ export function OverviewSection() {
           <ScrollableTabs items={clientOptions}>
             {clientOptions.map((client) => (
               <TabsContent key={client.id} value={client.id}>
-                <ClientTabContent clientId={client.id} />
+                <ClientTabContent clientId={client.id} notes={clientNotesMap.get(client.id)} />
               </TabsContent>
             ))}
           </ScrollableTabs>
