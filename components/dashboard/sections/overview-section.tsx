@@ -20,11 +20,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDashboard } from "@/components/dashboard/dashboard-context";
 import { useAppStore } from "@/store/use-app-store";
 import { joinLabels } from "@/lib/constants/domain";
-import { listFiles, listLinks } from "@/lib/supabase/queries";
+import { listFiles, listLinks, listProjects } from "@/lib/supabase/queries";
 
 import { viewFile } from "@/lib/upload/download";
 import { useCancellableFetch } from "@/hooks/use-cancellable-fetch";
-import type { FileItem, LinkItem } from "@/types/domain";
+import type { FileItem, LinkItem, ProjectItem } from "@/types/domain";
 
 // ---------------------------------------------------------------------------
 // Reusable scrollable tabs wrapper
@@ -228,6 +228,10 @@ function ClientTabContent({ clientId, notes }: { clientId: string; notes?: strin
     const result = await listFiles({ all: true, clientId: id });
     return result.items;
   }, []);
+  const fetchProjects = useCallback(async (id: string) => {
+    const result = await listProjects({ all: true, clientId: id });
+    return result?.items ?? [];
+  }, []);
 
   const { data: links, isLoading: linksLoading } = useCancellableFetch<LinkItem[]>(
     clientId,
@@ -237,25 +241,42 @@ function ClientTabContent({ clientId, notes }: { clientId: string; notes?: strin
     clientId,
     fetchFiles,
   );
+  const { data: projects } = useCancellableFetch<ProjectItem[]>(clientId, fetchProjects);
 
-  const { clientLinks, projectLinks, codebaseLinks } = useMemo(() => {
+  const projectDescMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const p of projects ?? []) {
+      map.set(p.id, p.description ?? null);
+    }
+    return map;
+  }, [projects]);
+
+  const { clientLinks, projectGroups, codebaseLinks } = useMemo(() => {
     const client: LinkItem[] = [];
-    const project: LinkItem[] = [];
     const codebase: LinkItem[] = [];
+    const projectMap = new Map<string, { projectId: string; projectName: string; links: LinkItem[] }>();
     for (const link of links ?? []) {
       if (link.codebaseId) {
         codebase.push(link);
       } else if (link.projectId) {
-        project.push(link);
+        let group = projectMap.get(link.projectId);
+        if (!group) {
+          group = { projectId: link.projectId, projectName: link.projectName ?? "", links: [] };
+          projectMap.set(link.projectId, group);
+        }
+        group.links.push(link);
       } else {
         client.push(link);
       }
     }
     const sort = (a: LinkItem, b: LinkItem) => a.title.localeCompare(b.title);
     client.sort(sort);
-    project.sort(sort);
     codebase.sort(sort);
-    return { clientLinks: client, projectLinks: project, codebaseLinks: codebase };
+    const projectGroups = Array.from(projectMap.values()).sort((a, b) =>
+      a.projectName.localeCompare(b.projectName),
+    );
+    for (const g of projectGroups) g.links.sort(sort);
+    return { clientLinks: client, projectGroups, codebaseLinks: codebase };
   }, [links]);
 
   if (linksLoading || filesLoading) {
@@ -275,11 +296,29 @@ function ClientTabContent({ clientId, notes }: { clientId: string; notes?: strin
           <CardTitle className="text-sm font-medium">Project</CardTitle>
         </CardHeader>
         <CardContent>
-          <LinkList
-            links={projectLinks}
-            emptyMessage="No project-level links."
-            getLabel={(l) => joinLabels(l.projectName, l.title)}
-          />
+          {projectGroups.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No project-level links.</p>
+          ) : (
+            <div className="space-y-4">
+              {projectGroups.map((group) => (
+                <div key={group.projectId}>
+                  <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+                    {group.projectName}
+                  </p>
+                  <LinkList
+                    links={group.links}
+                    emptyMessage=""
+                    getLabel={(l) => l.title}
+                  />
+                  {projectDescMap.get(group.projectId) && (
+                    <p className="text-muted-foreground mt-2 whitespace-pre-wrap text-sm">
+                      {projectDescMap.get(group.projectId)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
