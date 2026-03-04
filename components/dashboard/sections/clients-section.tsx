@@ -300,6 +300,20 @@ function ClientRowGroup({
                 )}
               </div>
 
+              {/* Notes */}
+              {client.notes && (
+                <div className="bg-background rounded-md border">
+                  <div className="border-b px-4 py-3">
+                    <h4 className="text-sm font-semibold">Notes</h4>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-muted-foreground whitespace-pre-wrap text-sm">
+                      {client.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Files sub-section */}
               <div className="bg-background rounded-md border">
                 <div className="border-b px-4 py-3">
