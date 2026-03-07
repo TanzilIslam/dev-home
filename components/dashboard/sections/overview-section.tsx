@@ -377,7 +377,7 @@ function ClientTabContent({ clientId, notes }: { clientId: string; notes?: strin
 // ---------------------------------------------------------------------------
 
 export function OverviewSection() {
-  const { clientOptions, clients } = useDashboard();
+  const { clientOptions, clientOptionsLoading, clients } = useDashboard();
 
   const clientNotesMap = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -388,6 +388,14 @@ export function OverviewSection() {
   }, [clients.items]);
 
   const setActiveSection = useAppStore((state) => state.setActiveSection);
+
+  if (clientOptionsLoading || clients.isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
 
   if (clientOptions.length === 0) {
     return (
